@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
 }
 
@@ -10,11 +10,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-coral-50: #fff5f2;
+  --color-coral-100: #ffe8e0;
+  --color-coral-200: #ffd0c2;
+  --color-coral-300: #ffb09a;
+  --color-coral-400: #e8795a;
+  --color-coral-500: #da5b38;
+  --color-coral-600: #c44a2a;
+  --color-coral-700: #a53c20;
+  --color-coral-800: #87321c;
+  --color-coral-900: #6e2c1b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #030712;
     --foreground: #ededed;
   }
 }
@@ -22,5 +32,14 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* スコアバーのアニメーション */
+@keyframes grow-width {
+  from { width: 0; }
+}
+
+.animate-grow {
+  animation: grow-width 0.7s ease-out;
 }
