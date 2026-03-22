@@ -99,9 +99,9 @@ function scoreMcp(input: ParsedInput): ItemScore {
       details.push("ドキュメント取得系あり (+15)");
     }
 
-    if (has(mcp, "codegraph", "code-graph", "codeanalysis")) {
+    if (has(mcp, "claude-peers", "peers")) {
       score += 15;
-      details.push("コード分析系あり (+15)");
+      details.push("インスタンス間通信系あり (+15)");
     }
 
     if (totalCount <= 10) {
@@ -549,9 +549,9 @@ function scoreHarnessCompliance(input: ParsedInput): ItemScore {
     score += 20;
     details.push("フィードバックループ: test+review+debug (+20)");
   }
-  if (has(input.claudemd, "ARCHITECTURE") && has(allText, "codegraph")) {
+  if (has(input.claudemd, "ARCHITECTURE") && has(allText, "explore", "grep", "glob", "コードベース")) {
     score += 20;
-    details.push("コードベース=コンテキスト: ARCHITECTURE + codegraph (+20)");
+    details.push("コードベース=コンテキスト: ARCHITECTURE + Explore活用 (+20)");
   }
   if (has(allText, "audit") && has(allText, "refactor")) {
     score += 20;
@@ -652,7 +652,7 @@ function getItemSuggestions(itemName: string, currentScore: number): Improvement
       { item: itemName, problem: "CLAUDE.mdが未作成または内容不足", action: "~/.claude/CLAUDE.md を作成し、コマンド・ルール・ワークフロー・リソース優先順位を記載してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
     ],
     "MCP構成": [
-      { item: itemName, problem: "MCP接続が未設定または不足", action: "claude mcp add で playwright, context7, codegraphcontext を追加してください", estimatedTime: "10分", impact: Math.min(deficit, 45) },
+      { item: itemName, problem: "MCP接続が未設定または不足", action: "claude mcp add で playwright, context7, claude-peers を追加してください", estimatedTime: "10分", impact: Math.min(deficit, 45) },
     ],
     "フック構成": [
       { item: itemName, problem: "フックが未設定", action: "settings.json の hooks セクションに SessionStart / PostToolUse フックを追加してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
@@ -706,7 +706,7 @@ function getItemSuggestions(itemName: string, currentScore: number): Improvement
       { item: itemName, problem: "セッション間の引き継ぎが不足", action: "SessionStart フックに progress.md / feature_list.json の自動表示を追加してください", estimatedTime: "5分", impact: Math.min(deficit, 40) },
     ],
     "ハーネスエンジニアリング準拠度": [
-      { item: itemName, problem: "ハーネス5柱への準拠が不足", action: "feature_list.json + init.sh + progress管理 + codegraphcontext MCP を導入してハーネスエンジニアリングに準拠してください", estimatedTime: "30分", impact: Math.min(deficit, 50) },
+      { item: itemName, problem: "ハーネス5柱への準拠が不足", action: "feature_list.json + init.sh + progress管理 + Exploreサブエージェント活用でハーネスエンジニアリングに準拠してください", estimatedTime: "30分", impact: Math.min(deficit, 50) },
     ],
     "仕様書駆動開発": [
       { item: itemName, problem: "仕様書駆動開発の仕組みが不足", action: "project-initializer スキルを作成し、ARCHITECTURE.md / feature_list.json / init.sh の生成フローを組み込んでください", estimatedTime: "20分", impact: Math.min(deficit, 50) },
