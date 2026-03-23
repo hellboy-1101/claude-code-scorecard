@@ -801,3 +801,58 @@ export function calculateScore(input: ParsedInput): ScorecardResult {
     improvements,
   };
 }
+
+// ─── タイプ相対スコア計算 ───
+
+import { getTypeReference, type Relevance } from "./type-references";
+
+export interface TypeRelativeResult {
+  score: number;
+  grade: string;
+  requiredItems: { name: string; score: number; max: number }[];
+  recommendedItems: { name: string; score: number; max: number }[];
+  irrelevantItems: string[];
+}
+
+export function calculateTypeRelativeScore(
+  categories: CategoryScore[],
+  typeId: string,
+): TypeRelativeResult {
+  const ref = getTypeReference(typeId);
+  if (!ref) {
+    return { score: 0, grade: "E", requiredItems: [], recommendedItems: [], irrelevantItems: [] };
+  }
+
+  const allItems = categories.flatMap((c) => c.items);
+  const requiredItems: { name: string; score: number; max: number }[] = [];
+  const recommendedItems: { name: string; score: number; max: number }[] = [];
+  const irrelevantItems: string[] = [];
+
+  for (const item of allItems) {
+    const relevance: Relevance = ref.items[item.name] ?? "irrelevant";
+    if (relevance === "required") {
+      requiredItems.push({ name: item.name, score: item.score, max: item.maxScore });
+    } else if (relevance === "recommended") {
+      recommendedItems.push({ name: item.name, score: item.score, max: item.maxScore });
+    } else {
+      irrelevantItems.push(item.name);
+    }
+  }
+
+  const reqTotal = requiredItems.reduce((s, i) => s + i.score, 0);
+  const reqMax = requiredItems.reduce((s, i) => s + i.max, 0);
+  const recTotal = recommendedItems.reduce((s, i) => s + i.score, 0);
+  const recMax = recommendedItems.reduce((s, i) => s + i.max, 0);
+
+  const numerator = reqTotal + recTotal * 0.5;
+  const denominator = reqMax + recMax * 0.5;
+  const score = denominator > 0 ? Math.round((numerator / denominator) * 100) : 0;
+
+  return {
+    score,
+    grade: getGrade(score),
+    requiredItems,
+    recommendedItems,
+    irrelevantItems,
+  };
+}

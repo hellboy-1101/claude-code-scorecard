@@ -20,22 +20,24 @@ export default function DiagnosePage() {
     setStep(2);
   };
 
-  const handleQuizComplete = (answers: Record<number, number>) => {
-    const diagnosis = calculateDiagnosis(answers);
+  const handleQuizComplete = (
+    answers: Record<number, number>,
+    multiAnswers: Record<number, number[]>,
+  ) => {
+    const diagnosis = calculateDiagnosis(answers, multiAnswers);
     let scorecardResult: ScorecardResult | null = null;
 
     if (envInput) {
       scorecardResult = calculateScore(envInput);
     }
 
-    // Store results in sessionStorage for the result page
     sessionStorage.setItem(
       "diagnosisResult",
       JSON.stringify({
         diagnosis,
         envInput,
         scorecardResult,
-      })
+      }),
     );
 
     router.push("/result");
