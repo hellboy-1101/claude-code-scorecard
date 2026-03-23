@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Claude Code Scorecard",
-  description: "Claude Code環境の設計品質を7カテゴリ・25項目で採点",
+  title: "Claude Code Type — あなたに最適なClaude Codeの使い方を診断",
+  description:
+    "10問の診断クイズで、あなたに最適なClaude Codeの活用スタイルを見つけましょう。6つのタイプから最適な使い方を提案します。",
 };
 
 export default function RootLayout({
