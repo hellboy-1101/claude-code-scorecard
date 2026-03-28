@@ -17,7 +17,7 @@ export interface DiagnosisType {
 
 export const DIAGNOSIS_TYPES: DiagnosisType[] = [
   {
-    id: "explorer",
+    id: "basic",
     name: "Explorer",
     nameJa: "探索者",
     color: "#3B82F6",
@@ -43,7 +43,7 @@ export const DIAGNOSIS_TYPES: DiagnosisType[] = [
       "/init でCLAUDE.mdを生成し、プロジェクトの方針を記載する",
   },
   {
-    id: "architect",
+    id: "specDriven",
     name: "Architect",
     nameJa: "設計者",
     color: "#8B5CF6",
@@ -69,7 +69,7 @@ export const DIAGNOSIS_TYPES: DiagnosisType[] = [
       "~/.claude/rules/ に coding-standards.md と testing-policy.md を作成する",
   },
   {
-    id: "engineer",
+    id: "harness",
     name: "Engineer",
     nameJa: "技師",
     color: "#F59E0B",
@@ -95,7 +95,7 @@ export const DIAGNOSIS_TYPES: DiagnosisType[] = [
       "Agent Teamsを有効化し、大きな機能を分割して並列実装する",
   },
   {
-    id: "commander",
+    id: "multiAgent",
     name: "Commander",
     nameJa: "指揮官",
     color: "#EF4444",
@@ -121,7 +121,7 @@ export const DIAGNOSIS_TYPES: DiagnosisType[] = [
       "エージェントの実行履歴を分析し、ボトルネックを特定する",
   },
   {
-    id: "scholar",
+    id: "academic",
     name: "Scholar",
     nameJa: "学者",
     color: "#10B981",
@@ -147,7 +147,7 @@ export const DIAGNOSIS_TYPES: DiagnosisType[] = [
       "専門ドメインのナレッジベースをスキルとして体系化する",
   },
   {
-    id: "visionary",
+    id: "outcome",
     name: "Visionary",
     nameJa: "先見者",
     color: "#EC4899",

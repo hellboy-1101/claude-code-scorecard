@@ -1,74 +1,72 @@
 import type { DiagnosisResult } from "./quiz-data";
 import { getTypeReference } from "./type-references";
 import type { TypeRelativeResult } from "./scorer";
+import type { ParsedInput } from "./types";
 
-// ─── Q6選択肢 → Claude Code機能の対応マップ ───
+// ─── Interest → Feature map (Layer 1) ───
 
-export const GAP_TO_FEATURE_MAP: Record<string, { label: string; features: string[] }> = {
+export const INTEREST_TO_FEATURES: Record<string, { label: string; features: string[] }> = {
   "project-init": {
-    label: "新プロジェクトの初期設定を自動化したい",
+    label: "プロジェクトの初期設定を自動化したい",
     features: [
       "project-initializer スキル",
       "skill-resolver スキル",
       "CLAUDE.md テンプレート",
+      "feature_list.json",
     ],
   },
-  "test-review-commit": {
-    label: "テスト→レビュー→コミットを一連の流れにしたい",
+  "workflow": {
+    label: "テスト→レビュー→コミットのワークフローを整えたい",
     features: [
-      "/user:test コマンド",
-      "/user:review コマンド",
+      "/user:test + test-writer サブエージェント",
+      "/user:review + code-reviewer サブエージェント",
       "/user:commit コマンド",
-      "test-writer サブエージェント",
-      "code-reviewer サブエージェント",
+      "PostToolUse フック",
     ],
   },
-  "auto-debug": {
-    label: "バグが出たとき自動で原因特定→修正したい",
+  "debug": {
+    label: "バグの自動検出・修正を導入したい",
     features: [
       "debugger サブエージェント",
       "/user:debug コマンド",
       "/user:bugfix コマンド",
-      "/user:build コマンド（ランタイム検証付き）",
+      "/user:build コマンド",
+      "CLAUDE.md 品質検証ルール",
     ],
   },
-  "quality-check": {
-    label: "環境の品質を定期的にチェックしたい",
+  "quality": {
+    label: "コードの品質を自動で維持したい",
     features: [
-      "quality-auditor サブエージェント",
-      "/user:audit コマンド",
+      "常駐ルール（rules/）",
       "adversarial-review スキル",
-      "/weekly-eval コマンド（週次自己採点）",
-    ],
-  },
-  "catchup": {
-    label: "最新のClaude Code機能を常にキャッチアップしたい",
-    features: [
-      "Context7 MCP",
-      "/weekly-eval コマンド（ベストプラクティス差分チェック）",
-      "researcher サブエージェント",
+      "quality-auditor + /user:audit コマンド",
+      "/user:refactor コマンド",
+      "dependency-check スキル",
     ],
   },
   "parallel": {
-    label: "複数のClaude Codeインスタンスを並列で動かしたい",
+    label: "複数のAIインスタンスを並列で動かしたい",
     features: [
       "Git Worktree（cawエイリアス）",
       "Agent Teams",
       "claude-peers MCP",
     ],
   },
-  "auto-quality": {
-    label: "コードの品質を自動で維持したい",
+  "catchup": {
+    label: "最新のClaude Code機能や設定を常にキャッチアップしたい",
     features: [
-      "常駐ルール（rules/）",
-      "PostToolUse フック",
-      "/user:refactor コマンド",
-      "dependency-check スキル",
+      "Context7 MCP",
+      "/weekly-eval コマンド",
+      "researcher サブエージェント",
     ],
+  },
+  "general": {
+    label: "全体的に底上げしたい",
+    features: [],
   },
 };
 
-// ─── Q4機能ID → 表示名/説明マップ ───
+// ─── Feature info map for knowledge gap descriptions ───
 
 export const FEATURE_INFO: Record<string, { name: string; description: string; prompt: string }> = {
   claudemd: {
@@ -123,63 +121,237 @@ export const FEATURE_INFO: Record<string, { name: string; description: string; p
   },
 };
 
-// ─── 改善提案の型 ───
+// ─── Suggestion types ───
 
 export interface GapSuggestion {
-  type: "knowledge" | "action" | "environment";
+  type: "interest" | "knowledge" | "environment";
   title: string;
   description: string;
   prompt: string;
   priority: number;
 }
 
-// ─── 改善提案の生成 ───
+// ─── inferActualType: infer type from environment data ───
+
+export interface InferredType {
+  actualType: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export function inferActualType(input: ParsedInput): InferredType {
+  const evidence: string[] = [];
+  const scores: Record<string, number> = {
+    basic: 0, specDriven: 0, harness: 0,
+    multiAgent: 0, academic: 0, outcome: 0,
+  };
+
+  const has = (text: string, ...patterns: string[]): boolean => {
+    const lower = text.toLowerCase();
+    return patterns.some((p) => lower.includes(p.toLowerCase()));
+  };
+
+  // CLAUDE.md existence and quality
+  if (input.claudemd && input.claudemd !== "none") {
+    scores.basic += 1;
+    evidence.push("CLAUDE.md が存在する");
+
+    if (has(input.claudemd, "architecture", "仕様", "spec", "feature_list")) {
+      scores.specDriven += 2;
+      evidence.push("CLAUDE.md に仕様/アーキテクチャ参照がある");
+    }
+    if (has(input.claudemd, "ハーネス", "harness", "5つの柱", "品質検証")) {
+      scores.harness += 2;
+      evidence.push("CLAUDE.md にハーネスエンジニアリング参照がある");
+    }
+  }
+
+  // Rules
+  if (input.rules && input.rules !== "none") {
+    const ruleCount = input.rules.split("\n").filter((l) => l.trim()).length;
+    if (ruleCount >= 5) {
+      scores.harness += 2;
+      evidence.push(`常駐ルールが ${ruleCount} 件ある`);
+    } else if (ruleCount >= 2) {
+      scores.specDriven += 1;
+      evidence.push(`常駐ルールが ${ruleCount} 件ある`);
+    }
+  }
+
+  // Agents
+  if (input.agents && input.agents !== "none") {
+    const agentCount = input.agents.split("\n").filter((l) => l.trim()).length;
+    if (agentCount >= 3) {
+      scores.multiAgent += 2;
+      scores.harness += 1;
+      evidence.push(`サブエージェントが ${agentCount} 件ある`);
+    }
+  }
+
+  // MCP
+  if (input.mcp && input.mcp !== "none") {
+    if (has(input.mcp, "claude-peers")) {
+      scores.multiAgent += 2;
+      evidence.push("claude-peers MCP が接続されている");
+    }
+    if (has(input.mcp, "context7")) {
+      scores.academic += 1;
+      evidence.push("Context7 MCP が接続されている");
+    }
+  }
+
+  // Hooks
+  if (input.hooks && input.hooks !== "none") {
+    scores.harness += 2;
+    evidence.push("フック設定がある");
+  }
+
+  // Skills
+  if (input.skills && input.skills !== "none") {
+    const skillCount = input.skills.split("\n").filter((l) => l.trim()).length;
+    if (skillCount >= 3) {
+      scores.harness += 1;
+      scores.outcome += 1;
+      evidence.push(`スキルが ${skillCount} 件ある`);
+    }
+  }
+
+  // Commands
+  if (input.commands && input.commands !== "none") {
+    const cmdCount = input.commands.split("\n").filter((l) => l.trim()).length;
+    if (cmdCount >= 5) {
+      scores.harness += 2;
+      evidence.push(`コマンドが ${cmdCount} 件ある`);
+    }
+  }
+
+  // Zshrc worktree alias
+  if (input.zshrc && has(input.zshrc, "worktree", "caw")) {
+    scores.multiAgent += 1;
+    evidence.push("Worktree エイリアスがある");
+  }
+
+  const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
+  const topScore = sorted[0][1];
+  const totalPossible = 15; // rough max
+  const confidence = Math.min(1, topScore / totalPossible * 2);
+
+  return {
+    actualType: topScore > 0 ? sorted[0][0] : "basic",
+    confidence: Math.round(confidence * 100) / 100,
+    evidence,
+  };
+}
+
+// ─── compareTypes: compare quiz type vs inferred type ───
+
+export interface TypeComparison {
+  pattern: "match" | "aspiration" | "underestimate" | "diverge";
+  evaluationType: string;
+  message: string;
+}
+
+export function compareTypes(
+  quizType: string,
+  actualType: string,
+  confidence: number,
+): TypeComparison {
+  if (confidence < 0.2) {
+    // Low confidence: trust quiz
+    return {
+      pattern: "match",
+      evaluationType: quizType,
+      message: "環境データが少ないため、クイズ結果を基準にします。",
+    };
+  }
+
+  if (quizType === actualType) {
+    return {
+      pattern: "match",
+      evaluationType: quizType,
+      message: "目指す姿と現在の環境が一致しています。",
+    };
+  }
+
+  // Tier ordering for comparison
+  const tiers: Record<string, number> = {
+    basic: 1, specDriven: 2, harness: 3,
+    multiAgent: 4, academic: 2, outcome: 4,
+  };
+
+  const quizTier = tiers[quizType] ?? 1;
+  const actualTier = tiers[actualType] ?? 1;
+
+  if (quizTier > actualTier) {
+    return {
+      pattern: "aspiration",
+      evaluationType: quizType,
+      message: `現在は ${actualType} レベルですが、${quizType} を目指しています。ギャップを埋める提案を行います。`,
+    };
+  }
+
+  if (quizTier < actualTier) {
+    return {
+      pattern: "underestimate",
+      evaluationType: actualType,
+      message: `環境は既に ${actualType} レベルに達しています。より高い基準で評価します。`,
+    };
+  }
+
+  // Same tier, different type
+  return {
+    pattern: "diverge",
+    evaluationType: quizType,
+    message: `現在の環境は ${actualType} 向きですが、${quizType} を目指しています。方向転換の提案を含めます。`,
+  };
+}
+
+// ─── 3-layer suggestion generation ───
 
 export function generateGapSuggestions(
   diagnosis: DiagnosisResult,
   typeRelative: TypeRelativeResult | null,
+  selectedInterest?: string,
 ): GapSuggestion[] {
   const suggestions: GapSuggestion[] = [];
-  const ref = getTypeReference(diagnosis.primaryType);
-  if (!ref) return suggestions;
+  const evaluationType = diagnosis.primaryType;
+  const ref = getTypeReference(evaluationType);
 
-  // 1. 知識ギャップ（最優先）
-  for (const featureId of diagnosis.unknownFeatures) {
-    const info = FEATURE_INFO[featureId];
-    if (!info) continue;
-
-    // このタイプで required or recommended な機能のみ提案
-    // 機能IDとスコア項目の対応は完全一致しないが、関連性で判定
-    const isRelevant = isFeatureRelevantToType(featureId, ref.items);
-    if (!isRelevant) continue;
-
-    suggestions.push({
-      type: "knowledge",
-      title: info.name,
-      description: `${ref.typeName}に必要な機能ですが、まだ使ったことがないようです。${info.description}`,
-      prompt: info.prompt,
-      priority: 100,
-    });
+  // Layer 1: Interest-based suggestions
+  if (selectedInterest && selectedInterest !== "general") {
+    const interestInfo = INTEREST_TO_FEATURES[selectedInterest];
+    if (interestInfo && interestInfo.features.length > 0) {
+      suggestions.push({
+        type: "interest",
+        title: interestInfo.label,
+        description: "選択した関心領域に基づく提案です",
+        prompt: interestInfo.features.map((f) => `- ${f}`).join("\n"),
+        priority: 100,
+      });
+    }
   }
 
-  // 2. 行動ギャップ
-  for (const gapId of diagnosis.actionGaps) {
-    if (gapId === "all-done" || gapId === "not-yet") continue;
-    const gapInfo = GAP_TO_FEATURE_MAP[gapId];
-    if (!gapInfo) continue;
+  // Layer 2: Knowledge gap (Q5 unknownFeatures relevant to evaluationType)
+  if (ref) {
+    for (const featureId of diagnosis.unknownFeatures) {
+      const info = FEATURE_INFO[featureId];
+      if (!info) continue;
 
-    // 知っている機能に関連するギャップのみ（知っているが使えていない）
-    suggestions.push({
-      type: "action",
-      title: gapInfo.label,
-      description: `以下の機能で実現できます`,
-      prompt: gapInfo.features.map((f) => `- ${f}`).join("\n"),
-      priority: 80,
-    });
+      const isRelevant = isFeatureRelevantToType(featureId, ref.items);
+      if (!isRelevant) continue;
+
+      suggestions.push({
+        type: "knowledge",
+        title: info.name,
+        description: `${ref.typeName}に必要な機能ですが、まだ使ったことがないようです。${info.description}`,
+        prompt: info.prompt,
+        priority: 80,
+      });
+    }
   }
 
-  // 3. 環境ギャップ（環境データありの場合のみ）
-  if (typeRelative) {
+  // Layer 3: Environment gap (items scoring below 80)
+  if (typeRelative && ref) {
     for (const item of typeRelative.requiredItems) {
       if (item.score < 80) {
         suggestions.push({
@@ -207,7 +379,8 @@ export function generateGapSuggestions(
   return suggestions.sort((a, b) => b.priority - a.priority);
 }
 
-// 機能IDがタイプのリファレンスに関連するかを判定
+// ─── Helper: check if feature is relevant to type ───
+
 function isFeatureRelevantToType(
   featureId: string,
   items: Record<string, string>,
@@ -231,7 +404,8 @@ function isFeatureRelevantToType(
   );
 }
 
-// 環境改善プロンプト
+// ─── Helper: environment improvement prompts ───
+
 function getEnvImprovementPrompt(itemName: string): string {
   const prompts: Record<string, string> = {
     "CLAUDE.md品質": "~/.claude/CLAUDE.md を作成し、コマンド・ルール・ワークフロー・リソース優先順位を記載してください。",

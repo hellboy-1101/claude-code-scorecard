@@ -45,12 +45,15 @@ export default function ResultPage() {
 
   const { diagnosis, envInput, scorecardResult } = data;
   const primaryType = getTypeById(diagnosis.primaryType);
-  const secondaryType = getTypeById(diagnosis.secondaryType);
 
-  if (!primaryType || !secondaryType) {
+  if (!primaryType) {
     router.push("/diagnose");
     return null;
   }
+
+  // Determine secondary type from second-highest score
+  const sortedScores = Object.entries(diagnosis.scores).sort(([, a], [, b]) => b - a);
+  const secondaryType = sortedScores.length > 1 ? getTypeById(sortedScores[1][0]) : null;
 
   // Calculate type-relative score
   let typeRelative: TypeRelativeResult | null = null;
@@ -84,7 +87,8 @@ export default function ResultPage() {
             <button
               onClick={() => {
                 const scoreText = typeRelative ? ` (${typeRelative.score}/100 ${typeRelative.grade}ランク)` : "";
-                const text = `Claude Code Type 診断結果\n\n主タイプ: ${primaryType.name}（${primaryType.nameJa}）${scoreText}\n副タイプ: ${secondaryType.name}（${secondaryType.nameJa}）\n\n${primaryType.catchphrase}\n\nスコア分布:\n${DIAGNOSIS_TYPES.map((t) => `${t.name}: ${diagnosis.scores[t.id] || 0}pt`).join("\n")}`;
+                const subTypeText = secondaryType ? `\n副タイプ: ${secondaryType.name}（${secondaryType.nameJa}）` : "";
+                const text = `Claude Code Type 診断結果\n\n主タイプ: ${primaryType.name}（${primaryType.nameJa}）${scoreText}${subTypeText}\n\n${primaryType.catchphrase}\n\nスコア分布:\n${DIAGNOSIS_TYPES.map((t) => `${t.name}: ${diagnosis.scores[t.id] || 0}pt`).join("\n")}`;
                 navigator.clipboard.writeText(text);
               }}
               className="px-3 py-1.5 text-sm rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
@@ -106,7 +110,7 @@ export default function ResultPage() {
           {/* Hero section */}
           <ResultHero
             primaryType={primaryType}
-            secondaryType={secondaryType}
+            secondaryType={secondaryType ?? null}
             diagnosisResult={diagnosis}
             typeRelative={typeRelative}
           />

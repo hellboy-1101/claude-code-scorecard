@@ -16,8 +16,8 @@ const TYPE_CONFIG: Record<string, { label: string; bgClass: string; borderClass:
     textClass: "text-blue-700 dark:text-blue-300",
     icon: "💡",
   },
-  action: {
-    label: "やりたかったけどできていなかったこと",
+  interest: {
+    label: "関心領域に基づく提案",
     bgClass: "bg-amber-50 dark:bg-amber-900/20",
     borderClass: "border-amber-200 dark:border-amber-800",
     textClass: "text-amber-700 dark:text-amber-300",
@@ -37,7 +37,7 @@ export default function GapSuggestions({ suggestions }: GapSuggestionsProps) {
 
   const grouped: Record<string, GapSuggestion[]> = {
     knowledge: suggestions.filter((s) => s.type === "knowledge"),
-    action: suggestions.filter((s) => s.type === "action"),
+    interest: suggestions.filter((s) => s.type === "interest"),
     environment: suggestions.filter((s) => s.type === "environment"),
   };
 

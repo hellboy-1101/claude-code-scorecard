@@ -53,7 +53,7 @@ function buildItems(
 
 export const TYPE_REFERENCES: TypeReference[] = [
   {
-    typeId: "explorer",
+    typeId: "basic",
     typeName: "Explorer（ベーシック）",
     description:
       "CLAUDE.mdが整備され、Plan Modeを活用し、基本的なMCPが接続されている状態が理想。",
@@ -63,7 +63,7 @@ export const TYPE_REFERENCES: TypeReference[] = [
     ),
   },
   {
-    typeId: "architect",
+    typeId: "specDriven",
     typeName: "Architect（仕様書駆動）",
     description:
       "仕様書先行、タスク分割→1タスク1コミット、テストファースト。設計に基づいた堅実な開発が理想。",
@@ -79,14 +79,14 @@ export const TYPE_REFERENCES: TypeReference[] = [
     ),
   },
   {
-    typeId: "engineer",
+    typeId: "harness",
     typeName: "Engineer（ハーネスエンジニアリング）",
     description:
       "5つの柱が完全実装。3層構造、自動化されたワークフロー、品質管理の完全サイクルが理想。全25項目が必須。",
     items: buildItems(ALL_ITEM_NAMES as unknown as string[], []),
   },
   {
-    typeId: "commander",
+    typeId: "multiAgent",
     typeName: "Commander（マルチエージェント）",
     description:
       "Agent Teams/Worktreeで並列開発。Builder-Validatorパターンによる大規模開発が理想。",
@@ -102,7 +102,7 @@ export const TYPE_REFERENCES: TypeReference[] = [
     ),
   },
   {
-    typeId: "scholar",
+    typeId: "academic",
     typeName: "Scholar（アカデミック/リサーチ）",
     description:
       "論文/データ分析中心。Worker-Criticペアによる検証、再現性重視の研究環境が理想。",
@@ -117,7 +117,7 @@ export const TYPE_REFERENCES: TypeReference[] = [
     ),
   },
   {
-    typeId: "visionary",
+    typeId: "outcome",
     typeName: "Visionary（Outcome Engineering）",
     description:
       "成果最適化。エージェントチーム→自律実行→人間レビュー。成果を最大化する自律的な組織が理想。",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QUIZ_QUESTIONS, type AnyQuestion, type QuizQuestion, type QuizQuestionMulti } from "@/lib/quiz-data";
+import { QUIZ_QUESTIONS } from "@/lib/quiz-data";
 
 interface DiagnosisQuizProps {
   onComplete: (answers: Record<number, number>, multiAnswers: Record<number, number[]>) => void;

@@ -208,7 +208,7 @@ export function generateTuningPrompt(
 
 function generateTypeOnlyPrompt(primaryType: string): string {
   const typePrompts: Record<string, string> = {
-    explorer: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    basic: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. CLAUDE.mdの作成
 ~/.claude/CLAUDE.md を作成し、以下を記載:
@@ -223,7 +223,7 @@ function generateTypeOnlyPrompt(primaryType: string): string {
 ## 検証
 cat ~/.claude/CLAUDE.md && ls ~/.claude/rules/`,
 
-    architect: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    specDriven: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. 常駐ルールの作成
 ~/.claude/rules/ に以下のファイルを作成:
@@ -239,7 +239,7 @@ cat ~/.claude/CLAUDE.md && ls ~/.claude/rules/`,
 ## 検証
 ls ~/.claude/rules/ ~/.claude/commands/`,
 
-    engineer: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    harness: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. サブエージェントの作成
 ~/.claude/agents/ に以下を作成:
@@ -259,7 +259,7 @@ settings.json に SessionStart / PostToolUse / SessionEnd フックを追加
 ## 検証
 ls ~/.claude/agents/ ~/.claude/commands/`,
 
-    commander: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    multiAgent: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. Agent Teams環境の構築
 - settings.json に CLAUDE_AGENT_TEAM 環境変数を設定
@@ -275,7 +275,7 @@ claude mcp add claude-peers -- npx @anthropic-ai/claude-peers
 ## 検証
 claude mcp list && ls ~/.claude/commands/`,
 
-    scholar: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    academic: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. 品質ゲートの構築
 ~/.claude/rules/ に以下を作成:
@@ -293,7 +293,7 @@ claude mcp list && ls ~/.claude/commands/`,
 ## 検証
 ls ~/.claude/rules/ ~/.claude/agents/`,
 
-    visionary: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
+    outcome: `以下の改善を順番に実行してください。各ステップ完了後に結果を報告してください。
 
 ## 1. 成果指標の定義
 CLAUDE.md に成果指標（KPI）セクションを追加:
@@ -312,5 +312,5 @@ CLAUDE.md に成果指標（KPI）セクションを追加:
 claude mcp list && ls ~/.claude/rules/ ~/.claude/agents/`,
   };
 
-  return typePrompts[primaryType] || typePrompts.explorer;
+  return typePrompts[primaryType] || typePrompts.basic;
 }

@@ -10,7 +10,7 @@ import TypeRadarChart from "./TypeRadarChart";
 
 interface ResultHeroProps {
   primaryType: DiagnosisType;
-  secondaryType: DiagnosisType;
+  secondaryType: DiagnosisType | null;
   diagnosisResult: DiagnosisResult;
   typeRelative?: TypeRelativeResult | null;
 }
@@ -104,15 +104,17 @@ export default function ResultHero({
         </p>
 
         {/* Sub type badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm">
-          <span className="text-gray-500 dark:text-gray-400">副タイプ:</span>
-          <span className="font-semibold" style={{ color: secondaryType.color }}>
-            {secondaryType.name}
-          </span>
-          <span className="text-gray-500 dark:text-gray-400">
-            ({secondaryType.nameJa})
-          </span>
-        </div>
+        {secondaryType && (
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm">
+            <span className="text-gray-500 dark:text-gray-400">副タイプ:</span>
+            <span className="font-semibold" style={{ color: secondaryType.color }}>
+              {secondaryType.name}
+            </span>
+            <span className="text-gray-500 dark:text-gray-400">
+              ({secondaryType.nameJa})
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* Radar chart */}
