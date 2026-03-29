@@ -79,6 +79,10 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: "Git Worktree", featureId: "worktree" },
       { text: "フック（hooks/）", featureId: "hooks" },
       { text: "feature_list.json / 進捗管理", featureId: "featurelist" },
+      { text: "Auto Mode / /effort", featureId: "automode" },
+      { text: "Agent Teams（Swarm Mode）", featureId: "swarm" },
+      { text: "クラウドスケジュールタスク / /loop", featureId: "cloudtasks" },
+      { text: "Skills Marketplace", featureId: "marketplace" },
       { text: "どれも知らない", featureId: "none" },
     ],
   },
@@ -88,6 +92,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
 export const ALL_FEATURES = [
   "claudemd", "planmode", "commands", "agents", "skills",
   "mcp", "agentteams", "worktree", "hooks", "featurelist",
+  "automode", "swarm", "cloudtasks", "marketplace",
 ];
 
 // Interest area options for Step 3

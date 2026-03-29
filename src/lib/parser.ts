@@ -14,6 +14,11 @@ const SECTION_MAP: Record<string, keyof ParsedInput> = {
   REFERENCES: "references",
   SKILLDATA: "skilldata",
   ZSHRC: "zshrc",
+  MANAGEDSETTINGS: "managedSettings",
+  AGENTSCONFIG: "agentsConfig",
+  SKILLSFRONTMATTER: "skillsFrontmatter",
+  HOOKSCONFIG: "hooksConfig",
+  VSCODEEXTENSIONS: "vscodeExtensions",
 };
 
 export function createEmptyInput(): ParsedInput {
@@ -31,6 +36,11 @@ export function createEmptyInput(): ParsedInput {
     references: "",
     skilldata: "",
     zshrc: "",
+    managedSettings: "",
+    agentsConfig: "",
+    skillsFrontmatter: "",
+    hooksConfig: "",
+    vscodeExtensions: "",
   };
 }
 

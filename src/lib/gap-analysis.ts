@@ -119,6 +119,26 @@ export const FEATURE_INFO: Record<string, { name: string; description: string; p
     description: "機能一覧とテスト手順を管理し、完了状態をバイナリで追跡するファイル",
     prompt: "プロジェクトルートに feature_list.json を作成し、各機能にid, name, passes（boolean）, test_steps（配列）を定義してください。/user:next コマンドで自動選定できます。",
   },
+  automode: {
+    name: "Auto Mode / /effort",
+    description: "Shift+Tabで安全な自動操作を有効化。/effortでlow/medium/highの推論レベルを調整",
+    prompt: "Shift+Tab で Auto Mode を有効化し、/effort で推論レベルを調整してください。Plan Mode との組み合わせで効率的な作業フローを構築できます。",
+  },
+  swarm: {
+    name: "Agent Teams（Swarm Mode）",
+    description: "複数のサブエージェントを公式にチーム編成し、@mentionsで直接通信させる並列開発機能",
+    prompt: "Agent TeamsでSwarm Modeを有効化し、チームリードとスペシャリストの役割を定義してください。isolation: worktreeで各エージェントに独立worktreeを割り当てられます。",
+  },
+  cloudtasks: {
+    name: "クラウドスケジュールタスク / /loop",
+    description: "/loopで定期実行、クラウドスケジュールタスクでローカルCLI不要の自律実行を実現",
+    prompt: "/loop でPR監視やデプロイチェックの定期実行を設定してください。クラウドスケジュールタスクでローカルCLI不要の自律実行も可能です。",
+  },
+  marketplace: {
+    name: "Skills Marketplace",
+    description: "コミュニティ製150+スキルを探索・導入できるマーケットプレイス",
+    prompt: "Skills Marketplaceでコミュニティ製スキルを探索し、プロジェクトに適したスキルを導入してください。marketplace.jsonでチーム独自のマーケットプレイスも構築できます。",
+  },
 };
 
 // ─── Suggestion types ───
@@ -295,6 +315,14 @@ export function inferActualType(input: ParsedInput): InferredType {
   if (agentCount >= 3) {
     scores.multiAgent += 3;
   }
+  if (hasItem(env.skills, "swarm", "agent-team")) {
+    scores.multiAgent += 3;
+    evidence.push("Swarm Mode / Agent Teams スキルあり");
+  }
+  if (hasText(claudeMd, "isolation", "--channels", "remote-control")) {
+    scores.multiAgent += 3;
+    evidence.push("並列・遠隔制御の設定あり");
+  }
   if (hasAgentTeams) {
     scores.multiAgent += 5;
     evidence.push("Agent Teams 環境変数あり");
@@ -322,6 +350,14 @@ export function inferActualType(input: ParsedInput): InferredType {
   }
   if (hasWorkflow && hasQualityRules) {
     scores.outcome += 3;
+  }
+  if (hasText(claudeMd, "kpi", "KPI", "成果指標", "メトリクス")) {
+    scores.outcome += 4;
+    evidence.push("KPI/成果指標への言及あり");
+  }
+  if (hasText(claudeMd, "cloud schedule", "cron", "/loop")) {
+    scores.outcome += 3;
+    evidence.push("クラウドスケジュール/自律実行の設定あり");
   }
 
   // 最もスコアが高いタイプを選択
@@ -496,6 +532,10 @@ function isFeatureRelevantToType(
     worktree: ["並列開発"],
     hooks: ["フック構成"],
     featurelist: ["プロジェクト初期化フロー", "仕様書駆動開発", "セッション間引き継ぎ"],
+    automode: ["自動化レベル"],
+    swarm: ["並列開発", "サブエージェント活用"],
+    cloudtasks: ["自動化レベル", "通信・遠隔"],
+    marketplace: ["スキル数と多様性", "プラグイン活用"],
   };
 
   const relatedItems = featureToItems[featureId] ?? [];
@@ -557,10 +597,12 @@ function getEnvImprovementPrompt(itemName: string): string {
     "セッション間引き継ぎ": "SessionStart フックに progress.md の自動表示を追加してください。",
     "ハーネスエンジニアリング準拠度": "feature_list.json + progress管理 + test/review/debugフローでハーネス5柱に準拠してください。",
     "仕様書駆動開発": "project-initializer スキルを作成し、ARCHITECTURE.md / feature_list.json 生成を組み込んでください。",
-    "並列開発": "worktree エイリアス、claude-peers MCP を追加してください。",
+    "並列開発": "Agent Teams/Swarm Modeを有効化し、isolation: worktreeで並列PRパイプラインを構築してください。",
     "エコシステム連携": "everything-claude-code をリファレンスに追加し、ecc-dispatcher スキルを作成してください。",
-    "自動化レベル": "Auto Mode エイリアス、Plan Mode 設定、skill-resolver を導入してください。",
-    "通信・遠隔": "claude-peers MCP を追加してください。",
+    "自動化レベル": "Auto Mode、/effort、Auto Memory、/loop、Remote Controlを導入してください。",
+    "通信・遠隔": "claude-peers MCP、--channelsパーミッションリレー、Remote Controlを追加してください。",
+    "モデル戦略": "スキル/エージェントごとにmodel:フロントマターを設定し、Haiku/Sonnet/Opusを使い分けてください。",
+    "安全設計": "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1を設定し、careful/freezeスキルを導入してください。",
   };
   return prompts[itemName] ?? `${itemName} の設定を改善してください。`;
 }

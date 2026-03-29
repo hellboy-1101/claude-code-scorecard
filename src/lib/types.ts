@@ -12,6 +12,11 @@ export interface ParsedInput {
   references: string;
   skilldata: string;
   zshrc: string;
+  managedSettings?: string;
+  agentsConfig?: string;
+  skillsFrontmatter?: string;
+  hooksConfig?: string;
+  vscodeExtensions?: string;
 }
 
 export interface ItemScore {

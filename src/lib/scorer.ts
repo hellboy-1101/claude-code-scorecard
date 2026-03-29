@@ -80,13 +80,13 @@ function scoreMcp(input: ParsedInput): ItemScore {
     const totalCount = lines.length;
 
     if (connectedCount >= 1) {
-      score += 20;
-      details.push(`MCP ${connectedCount}件接続中 (+20)`);
+      score += 15;
+      details.push(`MCP ${connectedCount}件接続中 (+15)`);
     }
 
     if (failedCount === 0 && connectedCount > 0) {
-      score += 20;
-      details.push("全件Connected (+20)");
+      score += 15;
+      details.push("全件Connected (+15)");
     }
 
     if (has(mcp, "playwright", "puppeteer", "browser")) {
@@ -100,13 +100,23 @@ function scoreMcp(input: ParsedInput): ItemScore {
     }
 
     if (has(mcp, "claude-peers", "peers")) {
-      score += 15;
-      details.push("インスタンス間通信系あり (+15)");
+      score += 10;
+      details.push("インスタンス間通信系あり (+10)");
+    }
+
+    if (has(mcp, "elicitation", "elicit")) {
+      score += 10;
+      details.push("MCP elicitation対応あり (+10)");
     }
 
     if (totalCount <= 10) {
-      score += 15;
-      details.push(`${totalCount}件: 過積載でない (+15)`);
+      score += 10;
+      details.push(`${totalCount}件: 過積載でない (+10)`);
+    }
+
+    if (totalCount >= 3) {
+      score += 10;
+      details.push(`${totalCount}件: 3件以上の多様な接続 (+10)`);
     }
   } else {
     details.push("MCP接続なし (0)");
@@ -126,27 +136,57 @@ function scoreHooks(input: ParsedInput): ItemScore {
     (hooks && hooks !== "none") || has(settings, '"hooks"');
 
   if (hooksExist) {
-    score += 20;
-    details.push("フック構成あり (+20)");
+    score += 10;
+    details.push("フック構成あり (+10)");
 
     if (has(combined, "sessionstart", "session-start", "SessionStart")) {
-      score += 20;
-      details.push("SessionStartフックあり (+20)");
+      score += 10;
+      details.push("SessionStartフックあり (+10)");
     }
 
     if (has(combined, "sessionend", "session-end", "SessionEnd")) {
-      score += 15;
-      details.push("SessionEndフックあり (+15)");
+      score += 8;
+      details.push("SessionEndフックあり (+8)");
     }
 
     if (has(combined, "pretooluse", "posttooluse", "PreToolUse", "PostToolUse")) {
-      score += 20;
-      details.push("PreToolUse/PostToolUseフックあり (+20)");
+      score += 10;
+      details.push("PreToolUse/PostToolUseフックあり (+10)");
+    }
+
+    if (has(combined, "postcompact", "PostCompact")) {
+      score += 8;
+      details.push("PostCompactフックあり (+8)");
+    }
+
+    if (has(combined, "taskcreated", "TaskCreated", "worktreecreate", "WorktreeCreate")) {
+      score += 8;
+      details.push("TaskCreated/WorktreeCreateフックあり (+8)");
+    }
+
+    if (has(combined, "instructionsloaded", "InstructionsLoaded", "configchange", "ConfigChange")) {
+      score += 8;
+      details.push("InstructionsLoaded/ConfigChangeフックあり (+8)");
+    }
+
+    if (has(combined, "elicitation", "Elicitation", "ElicitationResult")) {
+      score += 8;
+      details.push("Elicitation/ElicitationResultフックあり (+8)");
+    }
+
+    if (has(combined, "http:", "https:", '"url"')) {
+      score += 10;
+      details.push("HTTP Hooksあり (+10)");
+    }
+
+    if (has(combined, '"if"', "conditional")) {
+      score += 8;
+      details.push("conditional ifフィールドあり (+8)");
     }
 
     if (has(combined, "progress", "feature_list", "進捗")) {
-      score += 15;
-      details.push("進捗ファイル自動読み込みあり (+15)");
+      score += 10;
+      details.push("進捗ファイル自動読み込みあり (+10)");
     }
 
     const hookCount = countEntries(hooks);
@@ -207,22 +247,30 @@ function scoreSkillCount(input: ParsedInput): ItemScore {
   if (count >= 5) { score += 10; details.push("5件以上 (+10)"); }
   if (count >= 10) { score += 10; details.push("10件以上 (+10)"); }
 
-  const allText = `${input.skills}\n${input.claudemd}`;
+  const allText = `${input.skills}\n${input.claudemd}\n${input.skillsFrontmatter || ""}`;
   if (has(allText, "project-initializer")) {
-    score += 15;
-    details.push("project-initializer系あり (+15)");
+    score += 10;
+    details.push("project-initializer系あり (+10)");
   }
   if (has(allText, "skill-resolver")) {
-    score += 15;
-    details.push("skill-resolver系あり (+15)");
+    score += 10;
+    details.push("skill-resolver系あり (+10)");
   }
   if (has(allText, "careful", "freeze")) {
-    score += 15;
-    details.push("careful/freeze系あり (+15)");
+    score += 10;
+    details.push("careful/freeze系あり (+10)");
   }
   if (has(allText, "adversarial")) {
-    score += 15;
-    details.push("adversarial-review系あり (+15)");
+    score += 10;
+    details.push("adversarial-review系あり (+10)");
+  }
+  if (has(allText, "effort:", "model:")) {
+    score += 10;
+    details.push("effort/modelフロントマターあり (+10)");
+  }
+  if (has(allText, "paths:")) {
+    score += 10;
+    details.push("paths:フロントマターあり (+10)");
   }
 
   if (count === 0) details.push("スキルなし (0)");
@@ -302,26 +350,39 @@ function scoreSubagents(input: ParsedInput): ItemScore {
   let score = 0;
   const details: string[] = [];
   const count = countEntries(input.agents);
+  const agentsConfig = input.agentsConfig || "";
 
-  if (count >= 1) { score += 15; details.push(`エージェント${count}件 (+15)`); }
-  if (count >= 3) { score += 15; details.push("3件以上 (+15)"); }
+  if (count >= 1) { score += 10; details.push(`エージェント${count}件 (+10)`); }
+  if (count >= 3) { score += 10; details.push("3件以上 (+10)"); }
   if (count >= 5) { score += 10; details.push("5件以上 (+10)"); }
 
   if (has(input.agents, "code-review", "reviewer")) {
-    score += 15;
-    details.push("code-reviewer系あり (+15)");
+    score += 10;
+    details.push("code-reviewer系あり (+10)");
   }
   if (has(input.agents, "test-writer", "tester")) {
-    score += 15;
-    details.push("test-writer系あり (+15)");
+    score += 10;
+    details.push("test-writer系あり (+10)");
   }
   if (has(input.agents, "debugger", "debug")) {
-    score += 15;
-    details.push("debugger系あり (+15)");
+    score += 10;
+    details.push("debugger系あり (+10)");
   }
   if (has(input.agents, "quality-auditor", "auditor")) {
-    score += 15;
-    details.push("quality-auditor系あり (+15)");
+    score += 10;
+    details.push("quality-auditor系あり (+10)");
+  }
+  if (has(agentsConfig, "initialPrompt", "initial_prompt")) {
+    score += 10;
+    details.push("initialPromptフロントマターあり (+10)");
+  }
+  if (has(agentsConfig, "isolation", "worktree")) {
+    score += 10;
+    details.push("isolation: worktreeフロントマターあり (+10)");
+  }
+  if (has(agentsConfig, "background: true", "background:true")) {
+    score += 10;
+    details.push("バックグラウンドエージェントあり (+10)");
   }
 
   if (count === 0) details.push("エージェントなし (0)");
@@ -579,12 +640,17 @@ function scoreSpecDrivenDev(input: ParsedInput): ItemScore {
 function scoreParallelDev(input: ParsedInput): ItemScore {
   let score = 0;
   const details: string[] = [];
-  const allText = `${input.zshrc}\n${input.settings}\n${input.mcp}\n${input.claudemd}`;
+  const allText = `${input.zshrc}\n${input.settings}\n${input.mcp}\n${input.claudemd}\n${input.agentsConfig || ""}`;
 
-  if (has(allText, "worktree", "caw")) { score += 30; details.push("worktree関連設定あり (+30)"); }
-  if (has(input.mcp, "claude-peers", "peers")) { score += 25; details.push("claude-peers系MCPあり (+25)"); }
-  if (has(allText, "CLAUDE_AGENT_TEAM", "agent_team", "agent team")) { score += 25; details.push("Agent Teams環境変数あり (+25)"); }
-  if (has(input.claudemd, "並列", "parallel", "worktree")) { score += 20; details.push("並列開発ワークフロー記載あり (+20)"); }
+  if (has(allText, "worktree", "caw")) { score += 15; details.push("worktree関連設定あり (+15)"); }
+  if (has(input.mcp, "claude-peers", "peers")) { score += 15; details.push("claude-peers系MCPあり (+15)"); }
+  if (has(allText, "CLAUDE_AGENT_TEAM", "agent_team", "agent team", "swarm")) { score += 15; details.push("Agent Teams/Swarm Mode対応 (+15)"); }
+  if (has(input.claudemd, "並列", "parallel", "worktree")) { score += 10; details.push("並列開発ワークフロー記載あり (+10)"); }
+  if (has(allText, "isolation", "isolation: worktree", "isolation:worktree")) { score += 10; details.push("isolation: worktreeエージェント設定あり (+10)"); }
+  if (has(allText, "sparsePaths", "sparse-checkout")) { score += 10; details.push("worktree.sparsePathsあり (+10)"); }
+  if (has(allText, "--channels", "channels")) { score += 10; details.push("--channelsパーミッションリレーあり (+10)"); }
+  if (has(allText, "background: true", "background:true")) { score += 10; details.push("バックグラウンドエージェントあり (+10)"); }
+  if (has(allText, "loop", "/loop")) { score += 5; details.push("/loopコマンド活用あり (+5)"); }
 
   return { name: "並列開発", score, maxScore: 100, details };
 }
@@ -607,10 +673,15 @@ function scoreAutomationLevel(input: ParsedInput): ItemScore {
   const details: string[] = [];
   const allText = `${input.zshrc}\n${input.settings}\n${input.skills}\n${input.claudemd}`;
 
-  if (has(allText, "auto mode", "auto_mode", "automode", "ca=", "alias ca")) { score += 25; details.push("Auto Mode対応 (+25)"); }
-  if (has(allText, "plan mode", "plan_mode", "shift+tab", "planmode")) { score += 25; details.push("Plan Mode対応 (+25)"); }
-  if (has(allText, "skill-resolver")) { score += 25; details.push("skill-resolver対応 (+25)"); }
-  if (has(allText, "トークン概算", "token estimate", "cost estimate")) { score += 25; details.push("トークン概算対応 (+25)"); }
+  if (has(allText, "auto mode", "auto_mode", "automode", "ca=", "alias ca")) { score += 15; details.push("Auto Mode対応 (+15)"); }
+  if (has(allText, "plan mode", "plan_mode", "shift+tab", "planmode")) { score += 15; details.push("Plan Mode対応 (+15)"); }
+  if (has(allText, "skill-resolver")) { score += 10; details.push("skill-resolver対応 (+10)"); }
+  if (has(allText, "トークン概算", "token estimate", "cost estimate")) { score += 10; details.push("トークン概算対応 (+10)"); }
+  if (has(allText, "/effort", "effort")) { score += 10; details.push("/effort コマンド活用 (+10)"); }
+  if (has(allText, "auto memory", "auto_memory", "MEMORY.md", "/memory")) { score += 10; details.push("Auto Memory活用 (+10)"); }
+  if (has(allText, "/loop", "loop")) { score += 10; details.push("/loop スケジュール実行 (+10)"); }
+  if (has(allText, "remote-control", "remote control")) { score += 10; details.push("Remote Control対応 (+10)"); }
+  if (has(allText, "cloud schedule", "cloud task", "cron")) { score += 10; details.push("クラウドスケジュールタスク対応 (+10)"); }
 
   return { name: "自動化レベル", score, maxScore: 100, details };
 }
@@ -620,12 +691,50 @@ function scoreCommunication(input: ParsedInput): ItemScore {
   const details: string[] = [];
   const allText = `${input.mcp}\n${input.settings}\n${input.skills}\n${input.claudemd}`;
 
-  if (has(input.mcp, "claude-peers", "peers")) { score += 35; details.push("claude-peers系MCP (+35)"); }
-  if (has(input.mcp, "gmail", "calendar")) { score += 15; details.push("Gmail/Calendar系MCP (+15)"); }
-  if (has(allText, "telegram", "discord", "channel")) { score += 25; details.push("Channels対応 (+25)"); }
-  if (has(allText, "agent-skill-bus", "skill-bus", "品質監視")) { score += 25; details.push("スキル品質監視あり (+25)"); }
+  if (has(input.mcp, "claude-peers", "peers")) { score += 20; details.push("claude-peers系MCP (+20)"); }
+  if (has(input.mcp, "gmail", "calendar")) { score += 10; details.push("Gmail/Calendar系MCP (+10)"); }
+  if (has(allText, "telegram", "discord", "channel")) { score += 15; details.push("Channels対応 (+15)"); }
+  if (has(allText, "agent-skill-bus", "skill-bus", "品質監視")) { score += 15; details.push("スキル品質監視あり (+15)"); }
+  if (has(allText, "--channels", "permission relay")) { score += 15; details.push("--channelsパーミッションリレー (+15)"); }
+  if (has(allText, "remote-control", "remote control")) { score += 15; details.push("Remote Control対応 (+15)"); }
+  if (has(allText, "voice", "音声")) { score += 10; details.push("Voice Mode対応 (+10)"); }
 
   return { name: "通信・遠隔", score, maxScore: 100, details };
+}
+
+// ─── カテゴリ8: 戦略・安全 ───
+
+function scoreModelStrategy(input: ParsedInput): ItemScore {
+  let score = 0;
+  const details: string[] = [];
+  const allText = `${input.settings}\n${input.claudemd}\n${input.skills}\n${input.skillsFrontmatter || ""}`;
+
+  if (has(allText, "opus", "claude-opus")) { score += 15; details.push("Opus利用あり (+15)"); }
+  if (has(allText, "sonnet", "claude-sonnet")) { score += 10; details.push("Sonnet利用あり (+10)"); }
+  if (has(allText, "haiku", "claude-haiku")) { score += 15; details.push("Haiku利用あり (+15)"); }
+  if (has(allText, "model:", "model =")) { score += 15; details.push("スキル/エージェント単位のモデル指定あり (+15)"); }
+  if (has(allText, "1m", "1M", "100万", "1000k")) { score += 15; details.push("1Mコンテキスト活用認識あり (+15)"); }
+  if (has(allText, "コスト", "cost", "token estimate", "トークン")) { score += 15; details.push("コスト意識/トークン管理あり (+15)"); }
+  if (has(allText, "alwaysThinking", "always_thinking", "thinking")) { score += 15; details.push("Extended Thinking設定あり (+15)"); }
+
+  return { name: "モデル戦略", score, maxScore: 100, details };
+}
+
+function scoreSafetyDesign(input: ParsedInput): ItemScore {
+  let score = 0;
+  const details: string[] = [];
+  const allText = `${input.settings}\n${input.claudemd}\n${input.rules}\n${input.skills}\n${input.zshrc}`;
+
+  if (has(allText, "SUBPROCESS_ENV_SCRUB", "env_scrub")) { score += 20; details.push("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB設定あり (+20)"); }
+  if (has(allText, "careful")) { score += 15; details.push("carefulモードあり (+15)"); }
+  if (has(allText, "freeze")) { score += 10; details.push("freezeモードあり (+10)"); }
+  if (has(input.rules, "security")) { score += 15; details.push("security系ルールあり (+15)"); }
+  if (has(allText, "制約違反", "constraint violation", "safety")) { score += 15; details.push("制約違反/安全設計認識あり (+15)"); }
+  if (has(allText, "--no-verify", "no-verify")) { score += 0; } // 検出のみ、加点なし
+  if (has(allText, "permission", "allowlist", "deny")) { score += 15; details.push("パーミッション制御あり (+15)"); }
+  if (has(allText, "dependency-check", "npm audit", "pip audit")) { score += 10; details.push("依存パッケージ監査あり (+10)"); }
+
+  return { name: "安全設計", score, maxScore: 100, details };
 }
 
 // ─── 改善提案 ───
@@ -655,7 +764,7 @@ function getItemSuggestions(itemName: string, currentScore: number): Improvement
       { item: itemName, problem: "MCP接続が未設定または不足", action: "claude mcp add で playwright, context7, claude-peers を追加してください", estimatedTime: "10分", impact: Math.min(deficit, 45) },
     ],
     "フック構成": [
-      { item: itemName, problem: "フックが未設定", action: "settings.json の hooks セクションに SessionStart / PostToolUse フックを追加してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
+      { item: itemName, problem: "フックが未設定または不足", action: "settings.json の hooks セクションに SessionStart / PostToolUse / PostCompact フックを追加してください。HTTP Hooks や conditional if で高度な制御も検討してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
     ],
     "PC間同期・環境管理": [
       { item: itemName, problem: "Claude Code用エイリアスが未設定", action: "~/.zshrc に alias ca='claude --auto' / alias caw='claude worktree' を追加してください", estimatedTime: "5分", impact: Math.min(deficit, 40) },
@@ -712,16 +821,22 @@ function getItemSuggestions(itemName: string, currentScore: number): Improvement
       { item: itemName, problem: "仕様書駆動開発の仕組みが不足", action: "project-initializer スキルを作成し、ARCHITECTURE.md / feature_list.json / init.sh の生成フローを組み込んでください", estimatedTime: "20分", impact: Math.min(deficit, 50) },
     ],
     "並列開発": [
-      { item: itemName, problem: "並列開発環境が未構築", action: "worktree エイリアス、claude-peers MCP を追加し、CLAUDE.md に並列開発ワークフローを記載してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
+      { item: itemName, problem: "並列開発環境が未構築", action: "Agent Teams/Swarm Modeを有効化し、isolation: worktreeでエージェントに独立worktreeを割り当て、--channelsで非同期承認を設定してください", estimatedTime: "20分", impact: Math.min(deficit, 45) },
     ],
     "エコシステム連携": [
       { item: itemName, problem: "ECCエコシステムとの連携が不足", action: "everything-claude-code をリファレンスに追加し、ecc-dispatcher スキルを作成してください", estimatedTime: "20分", impact: Math.min(deficit, 40) },
     ],
     "自動化レベル": [
-      { item: itemName, problem: "自動化レベルが低い", action: "Auto Mode エイリアス、Plan Mode 設定、skill-resolver を導入してください", estimatedTime: "10分", impact: Math.min(deficit, 40) },
+      { item: itemName, problem: "自動化レベルが低い", action: "Auto Mode、/effort、Auto Memory、/loop スケジュール実行、Remote Control を導入してください。クラウドスケジュールタスクで自律実行も検討してください", estimatedTime: "15分", impact: Math.min(deficit, 45) },
     ],
     "通信・遠隔": [
-      { item: itemName, problem: "通信・遠隔機能が不足", action: "claude-peers MCP を追加し、Discord/Telegram 連携を検討してください", estimatedTime: "15分", impact: Math.min(deficit, 35) },
+      { item: itemName, problem: "通信・遠隔機能が不足", action: "claude-peers MCP を追加し、--channels パーミッションリレーと Remote Control を設定してください", estimatedTime: "15分", impact: Math.min(deficit, 35) },
+    ],
+    "モデル戦略": [
+      { item: itemName, problem: "モデル選択が最適化されていない", action: "スキル/エージェントごとに model: フロントマターを設定し、Haiku(高速)・Sonnet(バランス)・Opus(高品質)を使い分けてください。コスト管理にトークン概算を活用してください", estimatedTime: "15分", impact: Math.min(deficit, 40) },
+    ],
+    "安全設計": [
+      { item: itemName, problem: "安全設計が不十分", action: "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 を設定し、careful/freeze スキルを導入し、security ルールとパーミッション制御を整備してください", estimatedTime: "20分", impact: Math.min(deficit, 45) },
     ],
   };
 
@@ -781,6 +896,11 @@ export function calculateScore(input: ParsedInput): ScorecardResult {
     {
       name: "先進機能",
       items: [scoreParallelDev(input), scoreEcosystemIntegration(input), scoreAutomationLevel(input), scoreCommunication(input)],
+      average: 0,
+    },
+    {
+      name: "戦略・安全",
+      items: [scoreModelStrategy(input), scoreSafetyDesign(input)],
       average: 0,
     },
   ];
