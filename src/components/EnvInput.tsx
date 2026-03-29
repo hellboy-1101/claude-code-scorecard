@@ -35,7 +35,7 @@ export default function EnvInput({ onNext }: EnvInputProps) {
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           ターミナルで以下のスクリプトを実行し、結果を貼り付けてください。
           <br />
-          スキップしてクイズだけで診断することもできます。
+          環境データがあると、より正確な診断ができます。
         </p>
       </div>
 

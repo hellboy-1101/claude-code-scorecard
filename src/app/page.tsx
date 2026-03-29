@@ -34,7 +34,7 @@ export default function Home() {
               Claude Code Type
             </h2>
             <p className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto">
-              10問の診断クイズで、あなたに最適なClaude Codeの活用スタイルを見つけましょう
+              5問の診断クイズで、あなたに最適なClaude Codeの活用スタイルを見つけましょう
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}

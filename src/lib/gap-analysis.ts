@@ -131,178 +131,275 @@ export interface GapSuggestion {
   priority: number;
 }
 
-// ─── inferActualType: infer type from environment data ───
+// ─── ParsedEnvironment: structured counts from raw ParsedInput ───
+
+interface ParsedEnvironment {
+  rules: string[];
+  skills: string[];
+  agents: string[];
+  commands: string[];
+  hooks: string[];
+  mcp: { name: string; connected: boolean }[];
+  plugins: string[];
+  claudeMd: string;
+  zshrc: string[];
+}
+
+function extractLines(text: string): string[] {
+  if (!text || text === "none" || text === "{}") return [];
+  return text.split("\n").filter((l) => l.trim().length > 0);
+}
+
+function parsedInputToEnv(input: ParsedInput): ParsedEnvironment {
+  const mcpLines = extractLines(input.mcp);
+  const mcp = mcpLines.map((line) => ({
+    name: line.trim(),
+    connected: /connected/i.test(line),
+  }));
+
+  return {
+    rules: extractLines(input.rules),
+    skills: extractLines(input.skills),
+    agents: extractLines(input.agents),
+    commands: extractLines(input.commands),
+    hooks: extractLines(input.hooks),
+    mcp,
+    plugins: extractLines(input.plugins),
+    claudeMd: input.claudemd || "",
+    zshrc: extractLines(input.zshrc),
+  };
+}
+
+// ─── inferActualType: v3 spec scoring ───
+
+export type Confidence = "high" | "medium" | "low";
 
 export interface InferredType {
   actualType: string;
-  confidence: number;
+  confidence: Confidence;
   evidence: string[];
 }
 
+function hasText(text: string, ...patterns: string[]): boolean {
+  const lower = text.toLowerCase();
+  return patterns.some((p) => lower.includes(p.toLowerCase()));
+}
+
+function hasItem(items: string[], ...patterns: string[]): boolean {
+  return items.some((item) => {
+    const lower = item.toLowerCase();
+    return patterns.some((p) => lower.includes(p.toLowerCase()));
+  });
+}
+
 export function inferActualType(input: ParsedInput): InferredType {
+  const env = parsedInputToEnv(input);
   const evidence: string[] = [];
+
   const scores: Record<string, number> = {
     basic: 0, specDriven: 0, harness: 0,
     multiAgent: 0, academic: 0, outcome: 0,
   };
 
-  const has = (text: string, ...patterns: string[]): boolean => {
-    const lower = text.toLowerCase();
-    return patterns.some((p) => lower.includes(p.toLowerCase()));
-  };
+  // === 基盤要素 ===
+  const ruleCount = env.rules.length;
+  const skillCount = env.skills.length;
+  const agentCount = env.agents.length;
+  const commandCount = env.commands.length;
+  const hookCount = env.hooks.length;
+  const mcpConnected = env.mcp.filter((m) => m.connected).length;
 
-  // CLAUDE.md existence and quality
-  if (input.claudemd && input.claudemd !== "none") {
-    scores.basic += 1;
-    evidence.push("CLAUDE.md が存在する");
+  // === CLAUDE.md の質的分析 ===
+  const claudeMd = env.claudeMd;
+  const hasWorkflow = hasText(claudeMd, "ワークフロー", "workflow");
+  const hasQualityRules = hasText(claudeMd, "品質検証", "quality");
+  const hasFivePillars = hasText(claudeMd, "5つの柱", "ハーネス", "harness");
+  const hasResourcePriority = hasText(claudeMd, "リソース優先", "priority");
 
-    if (has(input.claudemd, "architecture", "仕様", "spec", "feature_list")) {
-      scores.specDriven += 2;
-      evidence.push("CLAUDE.md に仕様/アーキテクチャ参照がある");
-    }
-    if (has(input.claudemd, "ハーネス", "harness", "5つの柱", "品質検証")) {
-      scores.harness += 2;
-      evidence.push("CLAUDE.md にハーネスエンジニアリング参照がある");
-    }
+  // === 特定スキル・エージェントの存在 ===
+  const hasProjectInitializer = hasItem(env.skills, "project-initializer");
+  const hasSkillResolver = hasItem(env.skills, "skill-resolver");
+  const hasDebugger = hasItem(env.agents, "debugger");
+  const hasAdversarialReview = hasItem(env.skills, "adversarial");
+  const hasDependencyCheck = hasItem(env.skills, "dependency");
+  const hasResearcher = hasItem(env.agents, "researcher");
+  const hasEccDispatcher = hasItem(env.skills, "ecc-dispatcher");
+
+  // === 並列・チーム機能 ===
+  const hasWorktree = hasItem(env.zshrc, "worktree", "caw");
+  const hasAgentTeams = hasItem(env.zshrc, "AGENT_TEAMS");
+
+  // === Type 1: Basic ===
+  if (ruleCount <= 2 && skillCount <= 2 && agentCount <= 1 && commandCount <= 3) {
+    scores.basic += 10;
+    evidence.push("基本構成のみ（ルール少数、スキル少数）");
+  }
+  if (!hasWorkflow && !hasQualityRules) {
+    scores.basic += 3;
   }
 
-  // Rules
-  if (input.rules && input.rules !== "none") {
-    const ruleCount = input.rules.split("\n").filter((l) => l.trim()).length;
-    if (ruleCount >= 5) {
-      scores.harness += 2;
-      evidence.push(`常駐ルールが ${ruleCount} 件ある`);
-    } else if (ruleCount >= 2) {
-      scores.specDriven += 1;
-      evidence.push(`常駐ルールが ${ruleCount} 件ある`);
-    }
+  // === Type 2: Spec-Driven ===
+  if (hasProjectInitializer) {
+    scores.specDriven += 4;
+    evidence.push("project-initializer スキルあり");
+  }
+  if (commandCount >= 3 && commandCount < 10) {
+    scores.specDriven += 3;
+  }
+  if (ruleCount >= 3 && ruleCount < 7) {
+    scores.specDriven += 3;
   }
 
-  // Agents
-  if (input.agents && input.agents !== "none") {
-    const agentCount = input.agents.split("\n").filter((l) => l.trim()).length;
-    if (agentCount >= 3) {
-      scores.multiAgent += 2;
-      scores.harness += 1;
-      evidence.push(`サブエージェントが ${agentCount} 件ある`);
-    }
+  // === Type 3: Harness ===
+  if (ruleCount >= 5) {
+    scores.harness += 3;
+    evidence.push(`常駐ルール ${ruleCount} 件`);
   }
-
-  // MCP
-  if (input.mcp && input.mcp !== "none") {
-    if (has(input.mcp, "claude-peers")) {
-      scores.multiAgent += 2;
-      evidence.push("claude-peers MCP が接続されている");
-    }
-    if (has(input.mcp, "context7")) {
-      scores.academic += 1;
-      evidence.push("Context7 MCP が接続されている");
-    }
+  if (skillCount >= 8) {
+    scores.harness += 3;
+    evidence.push(`スキル ${skillCount} 件`);
   }
-
-  // Hooks
-  if (input.hooks && input.hooks !== "none") {
+  if (agentCount >= 5) {
+    scores.harness += 3;
+    evidence.push(`エージェント ${agentCount} 件`);
+  }
+  if (commandCount >= 10) {
+    scores.harness += 3;
+    evidence.push(`コマンド ${commandCount} 件`);
+  }
+  if (hookCount >= 4) {
+    scores.harness += 3;
+    evidence.push(`フック ${hookCount} 件`);
+  }
+  if (hasFivePillars) {
+    scores.harness += 3;
+    evidence.push("ハーネスエンジニアリング5つの柱への言及あり");
+  }
+  if (hasQualityRules) scores.harness += 2;
+  if (hasWorkflow) scores.harness += 2;
+  if (hasResourcePriority) scores.harness += 2;
+  if (hasProjectInitializer && hasSkillResolver) {
+    scores.harness += 3;
+    evidence.push("project-initializer + skill-resolver の組み合わせ");
+  }
+  if (hasDebugger && hasAdversarialReview && hasDependencyCheck) {
+    scores.harness += 3;
+    evidence.push("debugger + adversarial-review + dependency-check の品質三点セット");
+  }
+  if (hasEccDispatcher) {
     scores.harness += 2;
-    evidence.push("フック設定がある");
+    evidence.push("ecc-dispatcher スキルあり");
   }
 
-  // Skills
-  if (input.skills && input.skills !== "none") {
-    const skillCount = input.skills.split("\n").filter((l) => l.trim()).length;
-    if (skillCount >= 3) {
-      scores.harness += 1;
-      scores.outcome += 1;
-      evidence.push(`スキルが ${skillCount} 件ある`);
-    }
+  // === Type 4: Multi-Agent ===
+  if (agentCount >= 3) {
+    scores.multiAgent += 3;
+  }
+  if (hasAgentTeams) {
+    scores.multiAgent += 5;
+    evidence.push("Agent Teams 環境変数あり");
+  }
+  if (hasWorktree) {
+    scores.multiAgent += 4;
+    evidence.push("Worktree エイリアスあり");
+  }
+  if (mcpConnected >= 3) {
+    scores.multiAgent += 2;
   }
 
-  // Commands
-  if (input.commands && input.commands !== "none") {
-    const cmdCount = input.commands.split("\n").filter((l) => l.trim()).length;
-    if (cmdCount >= 5) {
-      scores.harness += 2;
-      evidence.push(`コマンドが ${cmdCount} 件ある`);
-    }
+  // === Type 5: Academic ===
+  if (hasResearcher) {
+    scores.academic += 5;
+    evidence.push("researcher エージェントあり");
   }
 
-  // Zshrc worktree alias
-  if (input.zshrc && has(input.zshrc, "worktree", "caw")) {
-    scores.multiAgent += 1;
-    evidence.push("Worktree エイリアスがある");
+  // === Type 6: Outcome ===
+  if (hasAgentTeams && agentCount >= 5 && commandCount >= 10) {
+    scores.outcome += 5;
+  }
+  if (hasWorktree && hookCount >= 4) {
+    scores.outcome += 3;
+  }
+  if (hasWorkflow && hasQualityRules) {
+    scores.outcome += 3;
   }
 
-  const sorted = Object.entries(scores).sort(([, a], [, b]) => b - a);
+  // 最もスコアが高いタイプを選択
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const topType = sorted[0][0];
   const topScore = sorted[0][1];
-  const totalPossible = 15; // rough max
-  const confidence = Math.min(1, topScore / totalPossible * 2);
+  const secondScore = sorted[1][1];
 
-  return {
-    actualType: topScore > 0 ? sorted[0][0] : "basic",
-    confidence: Math.round(confidence * 100) / 100,
-    evidence,
-  };
+  // 確信度判定
+  let confidence: Confidence;
+  if (topScore >= 15 && topScore - secondScore >= 5) confidence = "high";
+  else if (topScore >= 8) confidence = "medium";
+  else confidence = "low";
+
+  return { actualType: topType, confidence, evidence };
 }
 
-// ─── compareTypes: compare quiz type vs inferred type ───
+// ─── compareTypes: AlignmentPattern ───
+
+export type AlignmentPattern = "aligned" | "aspiring" | "underutilized";
 
 export interface TypeComparison {
-  pattern: "match" | "aspiration" | "underestimate" | "diverge";
+  pattern: AlignmentPattern;
   evaluationType: string;
   message: string;
 }
 
+const TYPE_NAMES: Record<string, string> = {
+  basic: "Explorer",
+  specDriven: "Architect",
+  harness: "Engineer",
+  multiAgent: "Commander",
+  academic: "Scholar",
+  outcome: "Visionary",
+};
+
+function typeName(id: string): string {
+  return TYPE_NAMES[id] || id;
+}
+
 export function compareTypes(
-  quizType: string,
+  selectedType: string,
   actualType: string,
-  confidence: number,
+  confidence: Confidence,
 ): TypeComparison {
-  if (confidence < 0.2) {
-    // Low confidence: trust quiz
-    return {
-      pattern: "match",
-      evaluationType: quizType,
-      message: "環境データが少ないため、クイズ結果を基準にします。",
-    };
-  }
-
-  if (quizType === actualType) {
-    return {
-      pattern: "match",
-      evaluationType: quizType,
-      message: "目指す姿と現在の環境が一致しています。",
-    };
-  }
-
-  // Tier ordering for comparison
-  const tiers: Record<string, number> = {
+  const typeLevel: Record<string, number> = {
     basic: 1, specDriven: 2, harness: 3,
-    multiAgent: 4, academic: 2, outcome: 4,
+    multiAgent: 3, academic: 2, outcome: 4,
   };
 
-  const quizTier = tiers[quizType] ?? 1;
-  const actualTier = tiers[actualType] ?? 1;
-
-  if (quizTier > actualTier) {
+  if (confidence === "low") {
     return {
-      pattern: "aspiration",
-      evaluationType: quizType,
-      message: `現在は ${actualType} レベルですが、${quizType} を目指しています。ギャップを埋める提案を行います。`,
+      pattern: "aligned",
+      evaluationType: selectedType,
+      message: "環境データが少ないため、志向タイプを基準に評価します",
     };
   }
 
-  if (quizTier < actualTier) {
+  if (selectedType === actualType) {
     return {
-      pattern: "underestimate",
-      evaluationType: actualType,
-      message: `環境は既に ${actualType} レベルに達しています。より高い基準で評価します。`,
+      pattern: "aligned",
+      evaluationType: selectedType,
+      message: `あなたの志向と環境が一致しています（${typeName(selectedType)}）`,
     };
   }
 
-  // Same tier, different type
+  if (typeLevel[selectedType] > typeLevel[actualType]) {
+    return {
+      pattern: "aspiring",
+      evaluationType: selectedType,
+      message: `あなたは${typeName(selectedType)}を志向していますが、環境は現在${typeName(actualType)}です。ステップアップの提案をします`,
+    };
+  }
+
   return {
-    pattern: "diverge",
-    evaluationType: quizType,
-    message: `現在の環境は ${actualType} 向きですが、${quizType} を目指しています。方向転換の提案を含めます。`,
+    pattern: "underutilized",
+    evaluationType: actualType,
+    message: `あなたの環境は${typeName(actualType)}レベルですが、${typeName(selectedType)}の使い方をしています。現在の環境をもっと活かせます`,
   };
 }
 
@@ -312,22 +409,25 @@ export function generateGapSuggestions(
   diagnosis: DiagnosisResult,
   typeRelative: TypeRelativeResult | null,
   selectedInterest?: string,
+  evaluationType?: string,
 ): GapSuggestion[] {
   const suggestions: GapSuggestion[] = [];
-  const evaluationType = diagnosis.primaryType;
-  const ref = getTypeReference(evaluationType);
+  const evalType = evaluationType || diagnosis.selectedType || diagnosis.primaryType;
+  const ref = getTypeReference(evalType);
 
   // Layer 1: Interest-based suggestions
   if (selectedInterest && selectedInterest !== "general") {
     const interestInfo = INTEREST_TO_FEATURES[selectedInterest];
     if (interestInfo && interestInfo.features.length > 0) {
-      suggestions.push({
-        type: "interest",
-        title: interestInfo.label,
-        description: "選択した関心領域に基づく提案です",
-        prompt: interestInfo.features.map((f) => `- ${f}`).join("\n"),
-        priority: 100,
-      });
+      for (const feature of interestInfo.features) {
+        suggestions.push({
+          type: "interest",
+          title: feature,
+          description: `「${interestInfo.label}」に必要な機能`,
+          prompt: getFeatureSetupPrompt(feature),
+          priority: 100,
+        });
+      }
     }
   }
 
@@ -379,7 +479,7 @@ export function generateGapSuggestions(
   return suggestions.sort((a, b) => b.priority - a.priority);
 }
 
-// ─── Helper: check if feature is relevant to type ───
+// ─── Helpers ───
 
 function isFeatureRelevantToType(
   featureId: string,
@@ -404,7 +504,35 @@ function isFeatureRelevantToType(
   );
 }
 
-// ─── Helper: environment improvement prompts ───
+function getFeatureSetupPrompt(feature: string): string {
+  const prompts: Record<string, string> = {
+    "project-initializer スキル": "~/.claude/skills/project-initializer/SKILL.md を作成し、CLAUDE.md・ARCHITECTURE.md・feature_list.json・init.sh を対話的に生成するスキルを定義してください。",
+    "skill-resolver スキル": "~/.claude/skills/skill-resolver/SKILL.md を作成し、仕様書に基づいて最適なスキル構成を判定するスキルを定義してください。",
+    "CLAUDE.md テンプレート": "~/.claude/CLAUDE.md をテンプレートとして整備し、新プロジェクトのルール・コマンド・ワークフローの雛形を作成してください。",
+    "feature_list.json": "プロジェクトルートに feature_list.json を作成し、各機能にid, name, passes, test_stepsを定義してください。",
+    "/user:test + test-writer サブエージェント": "~/.claude/commands/test.md と ~/.claude/agents/test-writer.md を作成し、テスト実行→失敗修正→再実行のループを自動化してください。",
+    "/user:review + code-reviewer サブエージェント": "~/.claude/commands/review.md と ~/.claude/agents/code-reviewer.md を作成し、セキュリティ・品質・テストの観点でレビューを自動化してください。",
+    "/user:commit コマンド": "~/.claude/commands/commit.md を作成し、lint→テスト→コミット→進捗更新の品質チェック付きコミットフローを定義してください。",
+    "PostToolUse フック": "settings.json の hooks セクションに PostToolUse フックを追加し、Write/Edit後に自動フォーマットを実行してください。",
+    "debugger サブエージェント": "~/.claude/agents/debugger.md を作成してください。エラーメッセージ・スタックトレース・失敗テストを分析し、根本原因を特定して修正する専門エージェントです。",
+    "/user:debug コマンド": "~/.claude/commands/debug.md を作成し、debuggerサブエージェントで原因特定→修正を実行するコマンドを定義してください。",
+    "/user:bugfix コマンド": "~/.claude/commands/bugfix.md を作成し、バグ報告からdebuggerサブエージェントで原因調査→修正→テストを実行するコマンドを定義してください。",
+    "/user:build コマンド": "~/.claude/commands/build.md を作成し、ビルド→ランタイム検証→デバッグを一括実行する品質検証コマンドを定義してください。",
+    "CLAUDE.md 品質検証ルール": "CLAUDE.md に品質検証セクションを追加し、ビルド検証→ランタイム検証→テスト実行→バグ自動修正ループのルールを記載してください。",
+    "常駐ルール（rules/）": "~/.claude/rules/ に coding-standards.md, security-baseline.md, testing-policy.md を作成してください。",
+    "adversarial-review スキル": "~/.claude/skills/adversarial-review/SKILL.md を作成し、敵対的コードレビューを実行するスキルを定義してください。",
+    "quality-auditor + /user:audit コマンド": "~/.claude/agents/quality-auditor.md と ~/.claude/commands/audit.md を作成し、コードベース全体の品質監査を実行してください。",
+    "/user:refactor コマンド": "~/.claude/commands/refactor.md を作成し、quality-auditorの監査結果に基づきリファクタリングを実行するコマンドを定義してください。",
+    "dependency-check スキル": "~/.claude/skills/dependency-check/SKILL.md を作成し、依存パッケージの脆弱性・更新状況チェックを自動化してください。",
+    "Git Worktree（cawエイリアス）": "~/.zshrc に alias caw='claude --worktree' を追加してください。",
+    "Agent Teams": "CLAUDE_AGENT_TEAM 環境変数を設定し、Agent Teamsを有効化してください。",
+    "claude-peers MCP": "claude mcp add claude-peers -- npx @anthropic-ai/claude-peers を実行してください。",
+    "Context7 MCP": "claude mcp add context7 -- npx -y @anthropic-ai/context7-mcp を実行してください。",
+    "/weekly-eval コマンド": "~/.claude/commands/weekly-eval.md を作成し、週次環境自己採点を自動化してください。",
+    "researcher サブエージェント": "~/.claude/agents/researcher.md を作成し、技術調査を独立して行うエージェントを定義してください。",
+  };
+  return prompts[feature] || `${feature} をセットアップしてください。`;
+}
 
 function getEnvImprovementPrompt(itemName: string): string {
   const prompts: Record<string, string> = {

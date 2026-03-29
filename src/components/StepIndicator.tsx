@@ -9,7 +9,7 @@ interface StepIndicatorProps {
 export default function StepIndicator({
   currentStep,
   totalSteps,
-  labels = ["環境データ", "診断クイズ", "結果"],
+  labels = ["診断クイズ", "タイプ確認", "関心・環境"],
 }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-center gap-2 mb-8">

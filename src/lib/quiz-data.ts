@@ -103,6 +103,7 @@ export const INTEREST_OPTIONS = [
 
 export interface DiagnosisResult {
   primaryType: string;
+  selectedType?: string;
   scores: Record<string, number>;
   knownFeatures: string[];
   unknownFeatures: string[];

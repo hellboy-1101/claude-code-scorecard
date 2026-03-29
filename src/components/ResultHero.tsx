@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import type { DiagnosisType } from "@/lib/diagnosis-types";
 import type { DiagnosisResult } from "@/lib/quiz-data";
 import type { TypeRelativeResult } from "@/lib/scorer";
+import type { AlignmentPattern } from "@/lib/gap-analysis";
 import { getTypeReference } from "@/lib/type-references";
 import Avatar from "./Avatar";
 import TypeRadarChart from "./TypeRadarChart";
@@ -13,6 +14,8 @@ interface ResultHeroProps {
   secondaryType: DiagnosisType | null;
   diagnosisResult: DiagnosisResult;
   typeRelative?: TypeRelativeResult | null;
+  alignmentPattern?: AlignmentPattern;
+  alignmentMessage?: string;
 }
 
 export default function ResultHero({
@@ -20,6 +23,8 @@ export default function ResultHero({
   secondaryType,
   diagnosisResult,
   typeRelative,
+  alignmentPattern,
+  alignmentMessage,
 }: ResultHeroProps) {
   const ref = getTypeReference(primaryType.id);
 
@@ -102,6 +107,24 @@ export default function ResultHero({
         <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">
           &ldquo;{primaryType.catchphrase}&rdquo;
         </p>
+
+        {/* Alignment pattern banner */}
+        {alignmentPattern && alignmentMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className={`inline-block px-5 py-2.5 rounded-xl text-sm font-medium mb-4 ${
+              alignmentPattern === "aligned"
+                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                : alignmentPattern === "aspiring"
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+            }`}
+          >
+            {alignmentMessage}
+          </motion.div>
+        )}
 
         {/* Sub type badge */}
         {secondaryType && (

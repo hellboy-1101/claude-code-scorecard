@@ -33,7 +33,7 @@ const TYPE_CONFIG: Record<string, { label: string; bgClass: string; borderClass:
 };
 
 export default function GapSuggestions({ suggestions }: GapSuggestionsProps) {
-  const [expandedType, setExpandedType] = useState<string | null>("knowledge");
+  const [expandedType, setExpandedType] = useState<string | null>("interest");
 
   const grouped: Record<string, GapSuggestion[]> = {
     knowledge: suggestions.filter((s) => s.type === "knowledge"),
@@ -53,7 +53,7 @@ export default function GapSuggestions({ suggestions }: GapSuggestionsProps) {
 
   return (
     <div className="space-y-4">
-      {(["knowledge", "action", "environment"] as const).map((type) => {
+      {(["interest", "knowledge", "environment"] as const).map((type) => {
         const items = grouped[type];
         if (items.length === 0) return null;
         const config = TYPE_CONFIG[type];
