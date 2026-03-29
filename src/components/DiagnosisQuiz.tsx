@@ -1,31 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QUIZ_QUESTIONS } from "@/lib/quiz-data";
+import { QUIZ_QUESTIONS, type QuizChoice } from "@/lib/quiz-data";
+import { DIAGNOSIS_TYPES } from "@/lib/diagnosis-types";
+
+/** Get the dominant type color from a single-select choice's points */
+function getChoiceColor(choice: QuizChoice): string {
+  const topTypeId = Object.entries(choice.points).sort(
+    ([, a], [, b]) => b - a,
+  )[0]?.[0];
+  const typeInfo = DIAGNOSIS_TYPES.find((t) => t.id === topTypeId);
+  return typeInfo?.color ?? "#da5b38"; // fallback to coral
+}
 
 interface DiagnosisQuizProps {
   onComplete: (answers: Record<number, number>, multiAnswers: Record<number, number[]>) => void;
   onBack: () => void;
+  onIndexChange?: (index: number) => void;
 }
 
-export default function DiagnosisQuiz({ onComplete, onBack }: DiagnosisQuizProps) {
+export default function DiagnosisQuiz({ onComplete, onBack, onIndexChange }: DiagnosisQuizProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [multiAnswers, setMultiAnswers] = useState<Record<number, number[]>>({});
   const [direction, setDirection] = useState(1);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   const question = QUIZ_QUESTIONS[currentIndex];
   const totalQuestions = QUIZ_QUESTIONS.length;
-  const progress = ((currentIndex + 1) / totalQuestions) * 100;
+
+  useEffect(() => {
+    onIndexChange?.(currentIndex);
+  }, [currentIndex, onIndexChange]);
 
   const handleSingleSelect = (choiceIndex: number) => {
+    const choice = question.choices[choiceIndex] as QuizChoice;
+    const color = getChoiceColor(choice);
+    setSelectedColor(color);
+
     const newAnswers = { ...answers, [question.id]: choiceIndex };
     setAnswers(newAnswers);
 
     if (currentIndex < totalQuestions - 1) {
       setDirection(1);
-      setTimeout(() => setCurrentIndex((prev) => prev + 1), 300);
+      setTimeout(() => {
+        setSelectedColor(null);
+        setCurrentIndex((prev) => prev + 1);
+      }, 350);
     } else {
       setTimeout(() => onComplete(newAnswers, multiAnswers), 400);
     }
@@ -51,6 +73,7 @@ export default function DiagnosisQuiz({ onComplete, onBack }: DiagnosisQuizProps
   const handlePrev = () => {
     if (currentIndex > 0) {
       setDirection(-1);
+      setSelectedColor(null);
       setCurrentIndex((prev) => prev - 1);
     } else {
       onBack();
@@ -62,27 +85,17 @@ export default function DiagnosisQuiz({ onComplete, onBack }: DiagnosisQuizProps
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Progress bar */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={handlePrev}
-            className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer"
-          >
-            ← 戻る
-          </button>
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {currentIndex + 1} / {totalQuestions}
-          </span>
-        </div>
-        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-coral-500 to-coral-400 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
+      {/* Back + counter */}
+      <div className="flex items-center justify-between mb-8">
+        <button
+          onClick={handlePrev}
+          className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer"
+        >
+          ← 戻る
+        </button>
+        <span className="text-sm font-medium text-gray-500 dark:text-gray-400 tabular-nums">
+          Q{currentIndex + 1} / {totalQuestions}
+        </span>
       </div>
 
       {/* Question */}
@@ -144,8 +157,11 @@ export default function DiagnosisQuiz({ onComplete, onBack }: DiagnosisQuizProps
                 );
               }
 
-              // Single select
+              // Single select with type-color feedback
               const isSelected = answers[question.id] === i;
+              const choiceColor =
+                isSelected && selectedColor ? selectedColor : undefined;
+
               return (
                 <motion.button
                   key={i}
@@ -154,26 +170,44 @@ export default function DiagnosisQuiz({ onComplete, onBack }: DiagnosisQuizProps
                   onClick={() => handleSingleSelect(i)}
                   className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all cursor-pointer ${
                     isSelected
-                      ? "border-coral-500 bg-coral-50 dark:bg-coral-500/10"
-                      : "border-gray-200 dark:border-gray-700 hover:border-coral-300 dark:hover:border-coral-500/50 bg-white dark:bg-gray-900"
+                      ? ""
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-900"
                   }`}
+                  style={
+                    isSelected && choiceColor
+                      ? {
+                          borderColor: choiceColor,
+                          backgroundColor: `${choiceColor}10`,
+                        }
+                      : undefined
+                  }
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-colors ${
                         isSelected
-                          ? "bg-coral-500 text-white"
+                          ? "text-white"
                           : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                       }`}
+                      style={
+                        isSelected && choiceColor
+                          ? { backgroundColor: choiceColor }
+                          : undefined
+                      }
                     >
                       {String.fromCharCode(97 + i)}
                     </div>
                     <span
-                      className={`text-sm sm:text-base ${
+                      className={`text-sm sm:text-base transition-colors ${
                         isSelected
-                          ? "text-coral-700 dark:text-coral-300 font-medium"
+                          ? "font-medium"
                           : "text-gray-700 dark:text-gray-300"
                       }`}
+                      style={
+                        isSelected && choiceColor
+                          ? { color: choiceColor }
+                          : undefined
+                      }
                     >
                       {choice.text}
                     </span>

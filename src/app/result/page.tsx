@@ -19,6 +19,9 @@ import TypeDescription from "@/components/TypeDescription";
 import ScoreCard from "@/components/ScoreCard";
 import RadarChart from "@/components/RadarChart";
 import GapSuggestions from "@/components/GapSuggestions";
+import TabContent, { type TabItem } from "@/components/TabContent";
+import Avatar from "@/components/Avatar";
+import { recordDiagnosis } from "@/components/SocialProof";
 
 interface StoredResult {
   diagnosis: DiagnosisResult;
@@ -39,12 +42,15 @@ export default function ResultPage() {
     }
     try {
       const parsed = JSON.parse(stored);
-      // Validate shape: must have selectedInterest field (v3 format)
-      if (!parsed.diagnosis || !("selectedInterest" in parsed)) {
+      if (!parsed.diagnosis || !("selectedInterest" in parsed) || parsed.formatVersion !== 2) {
+        sessionStorage.removeItem("diagnosisResult");
         router.push("/diagnose");
         return;
       }
       setData(parsed);
+      // Record for SocialProof stats
+      const typeId = parsed.diagnosis.selectedType || parsed.diagnosis.primaryType;
+      recordDiagnosis(typeId);
     } catch {
       router.push("/diagnose");
     }
@@ -81,17 +87,12 @@ export default function ResultPage() {
   let actualTypeId: string | undefined;
 
   if (envInput && scorecardResult) {
-    // Stage A: Infer actual type from env data
     const inferred = inferActualType(envInput);
     actualTypeId = inferred.actualType;
-
-    // Stage B: Compare types
     const comparison = compareTypes(evaluatedTypeId, inferred.actualType, inferred.confidence);
     alignmentPattern = comparison.pattern;
     alignmentMessage = comparison.message;
     evaluationType = comparison.evaluationType;
-
-    // Stage C: Score with evaluationType
     typeRelative = calculateTypeRelativeScore(
       scorecardResult.categories,
       evaluationType,
@@ -109,6 +110,170 @@ export default function ResultPage() {
     selectedInterest,
     evaluationType,
   );
+
+  // Build tabs
+  const tabs: TabItem[] = [
+    {
+      value: "description",
+      label: "タイプ解説",
+      content: <TypeDescription type={primaryType} />,
+    },
+    {
+      value: "suggestions",
+      label: "改善提案",
+      content:
+        gapSuggestions.length > 0 ? (
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              {alignmentPattern === "aspiring"
+                ? "ステップアップロードマップ"
+                : alignmentPattern === "underutilized"
+                  ? "活用提案"
+                  : "改善提案"}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              {alignmentPattern === "aspiring"
+                ? `${getTypeById(actualTypeId!)?.name || ""} → ${primaryType.name} に到達するために必要なアクション`
+                : alignmentPattern === "underutilized"
+                  ? "既にある機能をもっと活かすための提案"
+                  : `${primaryType.name}の理想形に近づくための具体的なアクション`}
+            </p>
+            <GapSuggestions suggestions={gapSuggestions} />
+          </div>
+        ) : (
+          <div className="p-6 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-center">
+            <p className="text-emerald-700 dark:text-emerald-400 font-medium">
+              改善提案はありません。このタイプの理想形に近い状態です！
+            </p>
+          </div>
+        ),
+    },
+  ];
+
+  // Environment evaluation tab (only with env data)
+  if (scorecardResult && typeRelative) {
+    tabs.push({
+      value: "environment",
+      label: "環境評価",
+      content: (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            環境評価
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {primaryType.name}としての達成度:{" "}
+            <span className="font-bold" style={{ color: primaryType.color }}>
+              {typeRelative.score}点
+            </span>
+            / 100点 — {typeRelative.grade}ランク
+            <br />
+            <span className="text-xs">
+              （必須項目{typeRelative.requiredItems.length}件 + 推奨項目
+              {typeRelative.recommendedItems.length}件で評価、 不要項目
+              {typeRelative.irrelevantItems.length}件は除外）
+            </span>
+          </p>
+          <div className="mb-8">
+            <RadarChart categories={scorecardResult.categories} />
+          </div>
+          <ScoreCard
+            categories={scorecardResult.categories}
+            itemRelevance={
+              itemRelevance as Record<
+                string,
+                "required" | "recommended" | "irrelevant"
+              >
+            }
+          />
+        </div>
+      ),
+    });
+  }
+
+  // Detailed data tab (score breakdown, always available)
+  tabs.push({
+    value: "data",
+    label: "詳細データ",
+    content: (
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          スコア分布
+        </h2>
+        <div className="space-y-3">
+          {DIAGNOSIS_TYPES.map((t) => {
+            const score = diagnosis.scores[t.id] ?? 0;
+            const maxScore = Math.max(
+              ...Object.values(diagnosis.scores),
+              1,
+            );
+            const pct = Math.round((score / maxScore) * 100);
+            return (
+              <div key={t.id} className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {t.name}（{t.nameJa}）
+                  </span>
+                  <span
+                    className="text-sm font-bold tabular-nums"
+                    style={{ color: t.color }}
+                  >
+                    {score}pt
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full animate-grow"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: t.color,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Knowledge gap */}
+        {diagnosis.unknownFeatures.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              未知の機能
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {diagnosis.unknownFeatures.map((f) => (
+                <span
+                  key={f}
+                  className="px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No env data hint */}
+        {!scorecardResult && (
+          <div className="mt-8 p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-center">
+            <p className="text-gray-600 dark:text-gray-400 mb-3">
+              環境データを入力すると、{primaryType.name}
+              としての達成度を採点できます
+            </p>
+            <button
+              onClick={() => router.push("/diagnose")}
+              className="px-6 py-2 rounded-lg bg-coral-500 text-white font-medium hover:bg-coral-600 transition-colors cursor-pointer"
+            >
+              環境データを入力して再診断
+            </button>
+          </div>
+        )}
+      </div>
+    ),
+  });
+
+  // Related types (all except primary)
+  const relatedTypes = DIAGNOSIS_TYPES.filter((t) => t.id !== primaryType.id);
 
   return (
     <>
@@ -155,106 +320,58 @@ export default function ResultPage() {
             alignmentMessage={alignmentMessage}
           />
 
-          <hr className="border-gray-200 dark:border-gray-800 my-4" />
+          {/* Tab layout */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            className="mt-10"
+          >
+            <TabContent
+              tabs={tabs}
+              defaultValue="description"
+              color={primaryType.color}
+            />
+          </motion.div>
 
-          {/* Type description */}
-          <TypeDescription type={primaryType} />
-
-          {/* Gap suggestions (always shown) */}
-          {gapSuggestions.length > 0 && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="py-8"
-            >
-              <hr className="border-gray-200 dark:border-gray-800 mb-8" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {alignmentPattern === "aspiring"
-                  ? "ステップアップロードマップ"
-                  : alignmentPattern === "underutilized"
-                  ? "活用提案"
-                  : "改善提案"}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                {alignmentPattern === "aspiring"
-                  ? `${getTypeById(actualTypeId!)?.name || ""} → ${primaryType.name} に到達するために必要なアクション`
-                  : alignmentPattern === "underutilized"
-                  ? "既にある機能をもっと活かすための提案"
-                  : `${primaryType.name}の理想形に近づくための具体的なアクション`}
-              </p>
-              <GapSuggestions suggestions={gapSuggestions} />
-            </motion.section>
-          )}
-
-          {/* Environment evaluation (only with env data) */}
-          {scorecardResult && typeRelative && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0 }}
-              className="py-8"
-            >
-              <hr className="border-gray-200 dark:border-gray-800 mb-8" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                環境評価
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                {primaryType.name}としての達成度:{" "}
-                <span
-                  className="font-bold"
-                  style={{ color: primaryType.color }}
-                >
-                  {typeRelative.score}点
-                </span>
-                / 100点 — {typeRelative.grade}ランク
-                <br />
-                <span className="text-xs">
-                  （必須項目{typeRelative.requiredItems.length}件 + 推奨項目
-                  {typeRelative.recommendedItems.length}件で評価、 不要項目
-                  {typeRelative.irrelevantItems.length}件は除外）
-                </span>
-              </p>
-
-              <div className="mb-8">
-                <RadarChart categories={scorecardResult.categories} />
-              </div>
-
-              <ScoreCard
-                categories={scorecardResult.categories}
-                itemRelevance={
-                  itemRelevance as Record<
-                    string,
-                    "required" | "recommended" | "irrelevant"
-                  >
-                }
-              />
-            </motion.section>
-          )}
-
-          {/* No env data hint */}
-          {!scorecardResult && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0 }}
-              className="py-8"
-            >
-              <hr className="border-gray-200 dark:border-gray-800 mb-8" />
-              <div className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-3">
-                  環境データを入力すると、{primaryType.name}
-                  としての達成度を採点できます
-                </p>
+          {/* Related type navigation cards — horizontal scroll */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2 }}
+            className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800"
+          >
+            <h3 className="text-sm font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">
+              関連タイプ
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              {relatedTypes.map((t) => (
                 <button
-                  onClick={() => router.push("/diagnose")}
-                  className="px-6 py-2 rounded-lg bg-coral-500 text-white font-medium hover:bg-coral-600 transition-colors cursor-pointer"
+                  key={t.id}
+                  onClick={() => router.push(`/types/${t.id}`)}
+                  className="flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-transparent transition-all cursor-pointer"
+                  style={
+                    {
+                      "--hover-shadow": `0 8px 24px ${t.color}20`,
+                    } as React.CSSProperties
+                  }
                 >
-                  環境データを入力して再診断
+                  <Avatar type={t.id} size="sm" />
+                  <div className="text-left">
+                    <span
+                      className="block text-sm font-bold"
+                      style={{ color: t.color }}
+                    >
+                      {t.name}
+                    </span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      {t.nameJa}
+                    </span>
+                  </div>
                 </button>
-              </div>
-            </motion.section>
-          )}
+              ))}
+            </div>
+          </motion.section>
         </div>
       </main>
 
