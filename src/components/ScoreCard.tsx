@@ -136,6 +136,7 @@ export default function ScoreCard({ categories, itemRelevance }: ScoreCardProps)
           >
             <button
               onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+              aria-expanded={openIndex === idx}
               className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center gap-3">

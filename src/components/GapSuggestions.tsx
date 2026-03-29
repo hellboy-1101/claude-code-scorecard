@@ -66,6 +66,7 @@ export default function GapSuggestions({ suggestions }: GapSuggestionsProps) {
           >
             <button
               onClick={() => setExpandedType(isExpanded ? null : type)}
+              aria-expanded={isExpanded}
               className="w-full flex items-center justify-between p-4 cursor-pointer"
             >
               <div className="flex items-center gap-3">

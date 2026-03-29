@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { DIAGNOSIS_TYPES } from "@/lib/diagnosis-types";
 import TypeCard from "@/components/TypeCard";
 
 export default function Home() {
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <>
@@ -26,9 +27,9 @@ export default function Home() {
         {/* Hero */}
         <section className="max-w-4xl mx-auto px-4 py-16 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.6 }}
           >
             <h2 className="text-3xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               Claude Code Type
@@ -37,8 +38,8 @@ export default function Home() {
               5問の診断クイズで、あなたに最適なClaude Codeの活用スタイルを見つけましょう
             </p>
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={shouldReduceMotion ? {} : { scale: 1.05 }}
+              whileTap={shouldReduceMotion ? {} : { scale: 0.95 }}
               onClick={() => router.push("/diagnose")}
               className="px-10 py-4 bg-gradient-to-r from-coral-500 to-coral-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
             >

@@ -50,7 +50,9 @@ export default function EnvInput({ onNext }: EnvInputProps) {
       </div>
 
       {/* Paste area */}
+      <label htmlFor="env-textarea" className="sr-only">環境データの貼り付け</label>
       <textarea
+        id="env-textarea"
         value={rawText}
         onChange={(e) => setRawText(e.target.value)}
         placeholder="スクリプトの実行結果をここに貼り付け..."

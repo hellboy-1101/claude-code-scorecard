@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import type { ParsedInput, ScorecardResult } from "@/lib/types";
 import { calculateScore } from "@/lib/scorer";
 import { calculateDiagnosis, type DiagnosisResult } from "@/lib/quiz-data";
@@ -18,6 +18,16 @@ export default function DiagnosePage() {
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
   const [selectedInterest, setSelectedInterest] = useState<string>("");
   const [showEnvInput, setShowEnvInput] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
+
+  const slideTransition = shouldReduceMotion
+    ? { initial: {}, animate: {}, exit: {} }
+    : {
+        initial: { opacity: 0, x: 40 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -40 },
+        transition: { duration: 0.3, ease: [0.25, 1, 0.5, 1] as [number, number, number, number] },
+      };
 
   // Step 1: Quiz complete
   const handleQuizComplete = (
@@ -86,9 +96,7 @@ export default function DiagnosePage() {
             {step === 1 && (
               <motion.div
                 key="quiz"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                {...slideTransition}
               >
                 <DiagnosisQuiz
                   onComplete={handleQuizComplete}
@@ -100,9 +108,7 @@ export default function DiagnosePage() {
             {step === 2 && diagnosis && (
               <motion.div
                 key="type"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                {...slideTransition}
               >
                 <TypeSelector
                   inferredType={diagnosis.primaryType}
@@ -116,9 +122,7 @@ export default function DiagnosePage() {
             {step === 3 && diagnosis && !showEnvInput && (
               <motion.div
                 key="interest"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                {...slideTransition}
               >
                 <InterestSelector
                   onSelect={handleInterestSelect}
@@ -130,9 +134,7 @@ export default function DiagnosePage() {
             {step === 3 && showEnvInput && (
               <motion.div
                 key="env"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
+                {...slideTransition}
               >
                 <EnvInput onNext={handleEnvComplete} />
               </motion.div>

@@ -20,6 +20,7 @@ export default function CopyButton({ text, label = "コピー", className = "" }
   return (
     <button
       onClick={handleCopy}
+      aria-label="クリップボードにコピー"
       className={`px-3 py-1.5 text-sm rounded-md transition-all duration-200 cursor-pointer
         ${copied
           ? "bg-green-500/20 text-green-400 border border-green-500/30"

@@ -17,8 +17,15 @@ export default function InterestSelector({
 }: InterestSelectorProps) {
   const [selected, setSelected] = useState<string>("");
 
+  const handleKeyDown = (optionId: string, e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setSelected(optionId);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="radiogroup" aria-label="関心領域の選択">
       <div>
         <h3 className="text-lg font-bold text-foreground mb-1">
           今最も改善したい・知りたい領域は？
@@ -32,18 +39,22 @@ export default function InterestSelector({
         {INTEREST_OPTIONS.map((option) => (
           <Card
             key={option.id}
-            className={`cursor-pointer transition-all ${
+            role="radio"
+            aria-checked={selected === option.id}
+            tabIndex={0}
+            className={`cursor-pointer transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
               selected === option.id
                 ? "ring-2 ring-primary border-primary"
                 : "hover:border-muted-foreground/30"
             }`}
             onClick={() => setSelected(option.id)}
+            onKeyDown={(e) => handleKeyDown(option.id, e)}
           >
-            <CardContent className="flex items-center gap-3 p-3">
+            <CardContent className="flex items-center gap-3 p-3 min-h-[44px]">
               {selected === option.id ? (
-                <CircleDot className="h-5 w-5 text-primary flex-shrink-0" />
+                <CircleDot className="h-5 w-5 text-primary flex-shrink-0" aria-hidden="true" />
               ) : (
-                <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
               )}
               <span className="text-sm">{option.text}</span>
             </CardContent>

@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import type { DiagnosisType } from "@/lib/diagnosis-types";
 import type { DiagnosisResult } from "@/lib/quiz-data";
 import type { TypeRelativeResult } from "@/lib/scorer";
@@ -27,12 +28,13 @@ export default function ResultHero({
   alignmentMessage,
 }: ResultHeroProps) {
   const ref = getTypeReference(primaryType.id);
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.section
-      initial={{ opacity: 0 }}
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.8 }}
       className="text-center py-12"
     >
       {/* Avatar */}
@@ -78,12 +80,11 @@ export default function ResultHero({
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {primaryType.name} としての達成度:
             </span>
-            <span
-              className="text-3xl font-extrabold"
-              style={{ color: primaryType.color }}
-            >
-              {typeRelative.score}
-            </span>
+            <AnimatedScore
+              target={typeRelative.score}
+              color={primaryType.color}
+              reduceMotion={!!shouldReduceMotion}
+            />
             <span className="text-lg text-gray-400">/100</span>
             <span
               className="text-lg font-bold px-2 py-0.5 rounded"
@@ -150,5 +151,49 @@ export default function ResultHero({
         <TypeRadarChart scores={diagnosisResult.scores} />
       </motion.div>
     </motion.section>
+  );
+}
+
+function AnimatedScore({
+  target,
+  color,
+  reduceMotion,
+}: {
+  target: number;
+  color: string;
+  reduceMotion: boolean;
+}) {
+  const [display, setDisplay] = useState(reduceMotion ? target : 0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setDisplay(target);
+      return;
+    }
+    let frame: number;
+    const duration = 800;
+    const start = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * target));
+      if (progress < 1) {
+        frame = requestAnimationFrame(animate);
+      }
+    };
+
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [target, reduceMotion]);
+
+  return (
+    <span
+      className="text-3xl font-extrabold tabular-nums"
+      style={{ color }}
+    >
+      {display}
+    </span>
   );
 }
