@@ -8,7 +8,7 @@ import type { TypeRelativeResult } from "@/lib/scorer";
 import type { AlignmentPattern } from "@/lib/gap-analysis";
 import { getTypeReference } from "@/lib/type-references";
 import Avatar from "./Avatar";
-import TraitBars, { deriveTraitsFromScores } from "./TraitBars";
+import TraitBars, { getIdealTraits } from "./TraitBars";
 
 interface ResultHeroProps {
   primaryType: DiagnosisType;
@@ -29,7 +29,7 @@ export default function ResultHero({
 }: ResultHeroProps) {
   const ref = getTypeReference(primaryType.id);
   const shouldReduceMotion = useReducedMotion();
-  const traits = deriveTraitsFromScores(diagnosisResult.scores);
+  const traits = getIdealTraits(primaryType.id);
 
   return (
     <div>
