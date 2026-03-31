@@ -53,7 +53,7 @@ export default function GapSuggestions({ suggestions }: GapSuggestionsProps) {
 
   return (
     <div className="space-y-4">
-      {(["knowledge", "action", "environment"] as const).map((type) => {
+      {(["knowledge", "interest", "environment"] as const).map((type) => {
         const items = grouped[type];
         if (items.length === 0) return null;
         const config = TYPE_CONFIG[type];
