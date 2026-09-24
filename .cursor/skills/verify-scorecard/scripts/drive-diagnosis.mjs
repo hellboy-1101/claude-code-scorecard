@@ -130,7 +130,7 @@ async function main() {
     await page.waitForURL("**/result", { timeout: 20000 });
     // Wait for hero type name (one of the known English type names)
     await page
-      .getByText(/Explorer|Architect|Engineer|Orchestrator|Scholar|Optimizer/)
+      .getByText(/Explorer|Architect|Engineer|Commander|Scholar|Visionary/)
       .first()
       .waitFor({ timeout: 20000 });
     // Allow hero animation settle
