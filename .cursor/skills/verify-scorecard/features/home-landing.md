@@ -26,11 +26,13 @@ Preconditions:
 - **Open home.** Navigate to `/`. Expect a heading containing `Claude Code Type` and visible text `あなたの` / `Claude Code` / `タイプは？`.
 - **Hero CTA.** Click `getByRole('button', { name: '無料で診断する' })`. URL becomes `/diagnose` and `Q1.` is visible.
 - **Header CTA.** From `/`, click `getByRole('button', { name: '診断を始める' }).first()` (header). URL becomes `/diagnose`.
-- **Type card.** Click a card whose text includes `Explorer` (or navigate via card click for id `basic`). URL becomes `/types/basic`.
+- **Type card.** Under **6つのタイプ**, click `page.locator('button').filter({ hasText: 'Explorer' }).filter({ hasText: '探索者' })` (card buttons, not the hero icon cluster). URL becomes `/types/basic`.
+- **Banner CTA.** Click `getByRole('button', { name: '診断を始める' }).last()` (coral banner). URL becomes `/diagnose`.
 - **Proof.** Screenshot `artifacts/home-landing/home.png` showing header branding and the hero CTA. Optionally capture after CTA click as `artifacts/home-landing/diagnose-entry.png` with `Q1.` visible.
 
 ## Gotchas
 
 - There are multiple **診断を始める** buttons (header + banner). Scope with `.first()` or locate within `header` / the coral banner section.
-- Type icon cluster on the right is `hidden` below the `lg` breakpoint; do not require it in mobile viewports.
+- Type icon cluster on the right is `hidden` below the `lg` breakpoint and is **not** a navigation control; clicking bare `getByText('Explorer')` can hit it and never leave `/`. Prefer card `button` locators under **6つのタイプ**.
+- Type icon cluster should not be required in mobile viewports.
 - Dark mode may change colors but not CTA labels.

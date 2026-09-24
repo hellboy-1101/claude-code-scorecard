@@ -89,7 +89,7 @@ Stable handles used by the script and feature map:
 | Interest | `getByRole('radiogroup', { name: '関心領域の選択' })` |
 | Skip env | `getByRole('button', { name: /スキップして診断へ/ })` |
 | Env textarea | `#env-textarea` / label `環境データの貼り付け` |
-| Type detail | navigate `/types/basic` (ids: `basic`, `specDriven`, `harness`, `multiAgent`, `academic`, `outcome`) |
+| Type detail | navigate `/types/basic` (ids: `basic`, `specDriven`, `harness`, `multiAgent`, `academic`, `outcome`; display names Explorer/Architect/Engineer/Commander/Scholar/Visionary) |
 
 Ad-hoc Playwright (repo root):
 
